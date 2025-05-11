@@ -1,105 +1,129 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Inventory Dashboard</title>
+<meta charset="UTF-8" />
+<title>Sales Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; }
-.filter { margin-bottom: 20px; }
-canvas { max-width: 100%; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
-th { background-color: #f4f4f4; }
+body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+h2 { color: #333; }
+label, select, input { margin: 10px; }
+canvas { background: #fff; border: 1px solid #ccc; margin-top: 20px; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background-color: #eee; }
 </style>
 </head>
 <body>
-<h1>Inventory Dashboard</h1>
-
-<div class="filter">
+<h2>Sales & Inventory Dashboard</h2>
 <label>Start Date: <input type="date" id="startDate" /></label>
 <label>End Date: <input type="date" id="endDate" /></label>
-<label>Supplier: <input type="text" id="supplier" placeholder="Optional" /></label>
+<label>Supplier:
+<select id="supplierFilter">
+<option value="">All Suppliers</option>
+</select>
+</label>
 <button onclick="loadDashboard()">Load Dashboard</button>
-</div>
 
-<h2>Sales Performance</h2>
-<canvas id="salesChart" height="100"></canvas>
+<h3>Sales Distribution by Supplier</h3>
+<canvas id="pieChart" width="400" height="200"></canvas>
 
-<h2>Top 10 Selling Items</h2>
+<h3>Sales, Purchases, Revenue Over Time</h3>
+<canvas id="lineChart" width="600" height="300"></canvas>
+
+<h3>Top 10 Items by Quantity Sold</h3>
 <table id="topSalesTable">
-<thead>
-<tr>
-<th>Barcode</th>
-<th>Item Name</th>
-<th>Supplier</th>
-<th>Qty Sold</th>
-</tr>
-</thead>
+<thead><tr><th>Item</th><th>Quantity Sold</th></tr></thead>
+<tbody></tbody>
+</table>
+
+<h3>Top 10 Items by Revenue</h3>
+<table id="topRevenueTable">
+<thead><tr><th>Item</th><th>Revenue</th></tr></thead>
 <tbody></tbody>
 </table>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your Apps Script web app URL
+const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec";
 
 async function loadDashboard() {
-const start = document.getElementById("startDate").value;
-const end = document.getElementById("endDate").value;
-const supplier = document.getElementById("supplier").value;
+const startDate = document.getElementById("startDate").value;
+const endDate = document.getElementById("endDate").value;
+const supplier = document.getElementById("supplierFilter").value;
 
-const query = `?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}&supplier=${encodeURIComponent(supplier)}`;
+const url = `${API_URL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(supplier)}`;
+const res = await fetch(url);
+const data = await res.json();
 
-try {
-const response = await fetch(`${API_URL}/exec${query}`);
-const data = await response.json();
-
-renderSalesChart(data);
-renderTopSalesTable(data);
-} catch (error) {
-console.error("Error loading dashboard:", error);
-alert("Failed to load dashboard. Check console for errors.");
-}
+renderPieChart(data.salesBySupplier);
+renderLineChart(data.timeline);
+populateTable("topSalesTable", data.topSales, "quantity");
+populateTable("topRevenueTable", data.topRevenue, "revenue");
+populateSupplierFilter(data.allSuppliers);
 }
 
-function renderSalesChart(data) {
-const labels = data.map(d => d.name);
-const sales = data.map(d => d.sold);
-
-const ctx = document.getElementById("salesChart").getContext("2d");
-if (window.salesChart) window.salesChart.destroy();
-
-window.salesChart = new Chart(ctx, {
-type: "bar",
+function renderPieChart(salesData) {
+const ctx = document.getElementById("pieChart").getContext("2d");
+new Chart(ctx, {
+type: "pie",
 data: {
-labels,
+labels: Object.keys(salesData),
 datasets: [{
-label: "Qty Sold",
-data: sales,
-backgroundColor: "#4CAF50"
+data: Object.values(salesData),
+backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#8AFF9C', '#FFA07A']
 }]
-},
-options: {
-responsive: true,
-scales: {
-y: { beginAtZero: true }
-}
 }
 });
 }
 
-function renderTopSalesTable(data) {
-const tbody = document.querySelector("#topSalesTable tbody");
+function renderLineChart(timelineData) {
+const ctx = document.getElementById("lineChart").getContext("2d");
+new Chart(ctx, {
+type: "line",
+data: {
+labels: timelineData.map(row => row.date),
+datasets: [
+{
+label: "Sales",
+data: timelineData.map(row => row.sales),
+borderColor: "blue",
+fill: false
+},
+{
+label: "Purchases",
+data: timelineData.map(row => row.purchases),
+borderColor: "green",
+fill: false
+},
+{
+label: "Revenue",
+data: timelineData.map(row => row.revenue),
+borderColor: "orange",
+fill: false
+}
+]
+}
+});
+}
+
+function populateTable(tableId, rows, field) {
+const tbody = document.getElementById(tableId).querySelector("tbody");
 tbody.innerHTML = "";
+rows.forEach(row => {
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${row.item}</td><td>${row[field]}</td>`;
+tbody.appendChild(tr);
+});
+}
 
-const top = [...data].sort((a, b) => b.sold - a.sold).slice(0, 10);
-
-top.forEach(item => {
-const row = `<tr>
-<td>${item.barcode}</td>
-<td>${item.name}</td>
-<td>${item.supplier}</td>
-<td>${item.sold}</td>
-</tr>`;
-tbody.insertAdjacentHTML("beforeend", row);
+function populateSupplierFilter(suppliers) {
+const select = document.getElementById("supplierFilter");
+select.innerHTML = '<option value="">All Suppliers</option>';
+suppliers.forEach(s => {
+const option = document.createElement("option");
+option.value = s;
+option.textContent = s;
+select.appendChild(option);
 });
 }
 </script>
