@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Sales Dashboard</title>
+<title>Inventory Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
@@ -15,9 +15,9 @@ th { background-color: #eee; }
 </style>
 </head>
 <body>
-<h2>Sales & Inventory Dashboard</h2>
-<label>Start Date: <input type="date" id="startDate" /></label>
-<label>End Date: <input type="date" id="endDate" /></label>
+<h2>Inventory Dashboard</h2>
+<label>Start Date: <input type="date" id="startDate"></label>
+<label>End Date: <input type="date" id="endDate"></label>
 <label>Supplier:
 <select id="supplierFilter">
 <option value="">All Suppliers</option>
@@ -44,13 +44,12 @@ th { background-color: #eee; }
 </table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec"; // Replace with actual
 
 async function loadDashboard() {
 const startDate = document.getElementById("startDate").value;
 const endDate = document.getElementById("endDate").value;
 const supplier = document.getElementById("supplierFilter").value;
-
 const url = `${API_URL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(supplier)}`;
 const res = await fetch(url);
 const data = await res.json();
@@ -62,54 +61,39 @@ populateTable("topRevenueTable", data.topRevenue, "revenue");
 populateSupplierFilter(data.allSuppliers);
 }
 
-function renderPieChart(salesData) {
+function renderPieChart(data) {
 const ctx = document.getElementById("pieChart").getContext("2d");
 new Chart(ctx, {
 type: "pie",
 data: {
-labels: Object.keys(salesData),
+labels: Object.keys(data),
 datasets: [{
-data: Object.values(salesData),
+data: Object.values(data),
 backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#8AFF9C', '#FFA07A']
 }]
 }
 });
 }
 
-function renderLineChart(timelineData) {
+function renderLineChart(timeline) {
 const ctx = document.getElementById("lineChart").getContext("2d");
 new Chart(ctx, {
 type: "line",
 data: {
-labels: timelineData.map(row => row.date),
+labels: timeline.map(e => e.date),
 datasets: [
-{
-label: "Sales",
-data: timelineData.map(row => row.sales),
-borderColor: "blue",
-fill: false
-},
-{
-label: "Purchases",
-data: timelineData.map(row => row.purchases),
-borderColor: "green",
-fill: false
-},
-{
-label: "Revenue",
-data: timelineData.map(row => row.revenue),
-borderColor: "orange",
-fill: false
-}
+{ label: "Sales", data: timeline.map(e => e.sales), borderColor: "#36A2EB", fill: false },
+{ label: "Purchases", data: timeline.map(e => e.purchases), borderColor: "#FF6384", fill: false },
+{ label: "Revenue", data: timeline.map(e => e.revenue), borderColor: "#8AFF9C", fill: false }
 ]
 }
 });
 }
 
-function populateTable(tableId, rows, field) {
-const tbody = document.getElementById(tableId).querySelector("tbody");
+function populateTable(id, data, field) {
+const tbody = document.getElementById(id).querySelector("tbody");
 tbody.innerHTML = "";
-rows.forEach(row => {
+data.forEach(row => {
 const tr = document.createElement("tr");
 tr.innerHTML = `<td>${row.item}</td><td>${row[field]}</td>`;
 tbody.appendChild(tr);
@@ -117,13 +101,13 @@ tbody.appendChild(tr);
 }
 
 function populateSupplierFilter(suppliers) {
-const dropdown = document.getElementById("supplierFilter");
-dropdown.innerHTML = `<option value="">All Suppliers</option>`;
+const select = document.getElementById("supplierFilter");
+if (select.options.length > 1) return; // already populated
 suppliers.forEach(supplier => {
 const option = document.createElement("option");
 option.value = supplier;
 option.textContent = supplier;
-dropdown.appendChild(option);
+select.appendChild(option);
 });
 }
 </script>
