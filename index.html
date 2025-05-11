@@ -116,15 +116,16 @@ function renderPieChart(id, data, label) {
 
 function populateSupplierFilter(suppliers) {
   const select = document.getElementById("supplierFilter");
-  select.innerHTML = '<option value="">All Suppliers</option>';
+  select.innerHTML = '<option value="">All Suppliers</option>'; // Default option
   suppliers.forEach(supplier => {
     const opt = document.createElement("option");
     opt.value = supplier;
-    opt.textContent = supplier;
+    opt.textContent = supplier === "Blank" ? "No Supplier" : supplier; // Display "No Supplier" for "Blank"
     select.appendChild(opt);
   });
 }
 </script>
 </body>
 </html>
+
 
