@@ -117,13 +117,13 @@ tbody.appendChild(tr);
 }
 
 function populateSupplierFilter(suppliers) {
-const select = document.getElementById("supplierFilter");
-select.innerHTML = '<option value="">All Suppliers</option>';
-suppliers.forEach(s => {
+const dropdown = document.getElementById("supplierFilter");
+dropdown.innerHTML = `<option value="">All Suppliers</option>`;
+suppliers.forEach(supplier => {
 const option = document.createElement("option");
-option.value = s;
-option.textContent = s;
-select.appendChild(option);
+option.value = supplier;
+option.textContent = supplier;
+dropdown.appendChild(option);
 });
 }
 </script>
