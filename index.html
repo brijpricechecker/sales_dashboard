@@ -43,9 +43,7 @@ th { background: #eee; }
 </div>
 
 <div class="charts">
-<div class="chart-container"><canvas id="salesChart"></canvas></div>
-<div class="chart-container"><canvas id="purchasesChart"></canvas></div>
-<div class="chart-container"><canvas id="revenueChart"></canvas></div>
+<div class="chart-container"><canvas id="salesRevenueChart"></canvas></div>
 <div class="chart-container"><canvas id="revenuePieChart"></canvas></div>
 </div>
 
@@ -86,9 +84,7 @@ populateTable("topSalesTable", data.topSales, ["name", "quantity"]);
 populateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
 
 clearCharts();
-renderBarChart("salesChart", data.timeline, "sales", "Sales Over Time");
-renderBarChart("purchasesChart", data.timeline, "purchases", "Purchases Over Time");
-renderBarChart("revenueChart", data.timeline, "revenue", "Revenue Over Time");
+renderSalesRevenueChart(data.timeline);
 renderPieChart("revenuePieChart", data.revenueBySupplier, "Revenue Distribution");
 
 populateSupplierFilter(data.allSuppliers);
@@ -107,19 +103,34 @@ tbody.insertAdjacentHTML("beforeend", row);
 });
 }
 
-function renderBarChart(id, data, field, label) {
-const ctx = document.getElementById(id).getContext("2d");
-const labels = Object.keys(data).sort();
-const values = labels.map(date => data[date][field] || 0);
+function renderSalesRevenueChart(timeline) {
+const ctx = document.getElementById("salesRevenueChart").getContext("2d");
+const labels = Object.keys(timeline).sort();
+const salesData = labels.map(date => timeline[date].sales || 0);
+const revenueData = labels.map(date => timeline[date].revenue || 0);
+
 const chart = new Chart(ctx, {
-type: "bar",
+type: "line",
 data: {
 labels,
-datasets: [{
-label,
-data: values,
-backgroundColor: "#36A2EB"
-}]
+datasets: [
+{
+label: "Sales",
+data: salesData,
+borderColor: "#36A2EB",
+backgroundColor: "rgba(54, 162, 235, 0.2)",
+fill: false,
+tension: 0.1
+},
+{
+label: "Revenue",
+data: revenueData,
+borderColor: "#4BC0C0",
+backgroundColor: "rgba(75, 192, 192, 0.2)",
+fill: false,
+tension: 0.1
+}
+]
 },
 options: {
 responsive: true,
