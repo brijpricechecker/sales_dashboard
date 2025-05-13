@@ -39,6 +39,7 @@ canvas { flex: 1; min-width: 300px; }
 <canvas id="salesChart" height="200"></canvas>
 <canvas id="revenueChart" height="200"></canvas>
 <canvas id="purchasesChart" height="200"></canvas>
+<canvas id="revenuePieChart" height="200"></canvas>
 </div>
 
 <h3>Top 10 Items by Quantity Sold</h3>
@@ -54,7 +55,8 @@ canvas { flex: 1; min-width: 300px; }
 </table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec"; // Replace with your actual deployed URL
+const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec"; // Replace with your actual URL
+
 let charts = [];
 
 async function loadDashboard() {
@@ -69,7 +71,7 @@ try {
 const res = await fetch(url);
 const data = await res.json();
 
-document.getElementById("totalSalesBox").textContent = `Total Sales: ${data.totals.sales}`;
+document.getElementById("totalSalesBox").textContent = `Total Sales: ${data.totals.sales.toFixed(2)}`;
 document.getElementById("totalPurchasesBox").textContent = `Total Purchases: ${data.totals.purchases}`;
 document.getElementById("totalRevenueBox").textContent = `Total Revenue: ${data.totals.revenue.toFixed(2)}`;
 
@@ -77,9 +79,10 @@ populateTable("topSalesTable", data.topSales, "quantity");
 populateTable("topRevenueTable", data.topRevenue, "revenue");
 
 clearCharts();
-renderBarChart("salesChart", data.timeline, "sales", "Sales Over Time");
+renderBarChart("salesChart", data.timeline, "sales", "Sales Amount Over Time");
 renderBarChart("revenueChart", data.timeline, "revenue", "Revenue Over Time");
 renderBarChart("purchasesChart", data.timeline, "purchases", "Purchases Over Time");
+renderPieChart("revenuePieChart", data.revenueBySupplier, "Revenue by Supplier");
 
 populateSupplierFilter(data.allSuppliers);
 } catch (error) {
@@ -117,6 +120,25 @@ scales: {
 x: { ticks: { maxRotation: 90, minRotation: 45 } },
 y: { beginAtZero: true }
 }
+}
+});
+charts.push(chart);
+}
+
+function renderPieChart(id, data, label) {
+const ctx = document.getElementById(id).getContext("2d");
+const chart = new Chart(ctx, {
+type: "pie",
+data: {
+labels: Object.keys(data).map(s => s === "Blank" ? "No Supplier" : s),
+datasets: [{
+label,
+data: Object.values(data),
+backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#8AFF9C', '#FFA07A', '#9370DB', '#4BC0C0', '#F7786B']
+}]
+},
+options: {
+responsive: true
 }
 });
 charts.push(chart);
