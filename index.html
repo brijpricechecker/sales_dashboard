@@ -1,142 +1,116 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-      .filters {
-        margin-bottom: 20px;
-      }
-      .chart-container {
-        margin-top: 30px;
-      }
-      canvas {
-        max-width: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Sales Dashboard</h2>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    canvas { margin: 20px 0; max-width: 100%; }
+    label, select, input { margin: 10px 5px; }
+  </style>
+</head>
+<body>
+  <h2>Sales Dashboard</h2>
+  <div>
+    <label>Start Date:</label>
+    <input type="date" id="startDate">
+    <label>End Date:</label>
+    <input type="date" id="endDate">
+    <label>Supplier:</label>
+    <select id="supplier">
+      <option value="">All</option>
+    </select>
+    <button onclick="fetchDashboardData()">Apply Filters</button>
+  </div>
 
-    <div class="filters">
-      <label>Start Date: <input type="date" id="startDate"></label>
-      <label>End Date: <input type="date" id="endDate"></label>
-      <label>Supplier:
-        <select id="supplier">
-          <option value="">All</option>
-        </select>
-      </label>
-      <button onclick="loadData()">Load</button>
-    </div>
+  <h3>Revenue Over Time</h3>
+  <canvas id="revenueChart"></canvas>
 
-    <div>
-      <strong>Total Sales:</strong> ₱<span id="totalSales">0</span><br>
-      <strong>Total Revenue:</strong> ₱<span id="totalRevenue">0</span><br>
-      <strong>Total Purchases:</strong> <span id="totalPurchases">0</span>
-    </div>
+  <h3>Sales by Supplier</h3>
+  <canvas id="supplierChart"></canvas>
 
-    <div class="chart-container">
-      <h3>Revenue Over Time</h3>
-      <canvas id="revenueChart"></canvas>
-    </div>
+  <script>
+    let revenueChart, supplierChart;
 
-    <div class="chart-container">
-      <h3>Sales by Supplier</h3>
-      <canvas id="salesSupplierChart"></canvas>
-    </div>
+    async function fetchDashboardData() {
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const supplier = document.getElementById("supplier").value;
 
-    <script>
-      async function loadData() {
-        const startDate = document.getElementById("startDate").value;
-        const endDate = document.getElementById("endDate").value;
-        const supplier = document.getElementById("supplier").value;
+      const url = new URL("https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec");
+      if (startDate) url.searchParams.append("startDate", startDate);
+      if (endDate) url.searchParams.append("endDate", endDate);
+      if (supplier) url.searchParams.append("supplier", supplier);
 
-        let url = new URL(window.location.href);
-        url.pathname = '/exec'; // Adjust this if needed
-        url.searchParams.set("startDate", startDate);
-        url.searchParams.set("endDate", endDate);
-        url.searchParams.set("supplier", supplier);
+      const response = await fetch(url);
+      const data = await response.json();
 
-        const response = await fetch(url);
-        const data = await response.json();
-        console.log(data); // <-- See Step 2 debug output
+      populateSuppliers(data.allSuppliers);
+      renderRevenueChart(data.timeline);
+      renderSupplierChart(data.salesBySupplier);
+    }
 
-        // Update totals
-        document.getElementById("totalSales").textContent = data.totals.sales.toLocaleString();
-        document.getElementById("totalRevenue").textContent = data.totals.revenue.toLocaleString();
-        document.getElementById("totalPurchases").textContent = data.totals.purchases.toLocaleString();
+    function populateSuppliers(suppliers) {
+      const select = document.getElementById("supplier");
+      select.innerHTML = `<option value="">All</option>`;
+      suppliers.forEach(supplier => {
+        const option = document.createElement("option");
+        option.value = supplier;
+        option.textContent = supplier;
+        select.appendChild(option);
+      });
+    }
 
-        // Populate supplier dropdown if empty
-        const supplierDropdown = document.getElementById("supplier");
-        if (supplierDropdown.options.length <= 1) {
-          data.allSuppliers.forEach(sup => {
-            const option = document.createElement("option");
-            option.value = sup;
-            option.text = sup;
-            supplierDropdown.appendChild(option);
-          });
-        }
+    function renderRevenueChart(timeline) {
+      const labels = Object.keys(timeline).sort();
+      const data = labels.map(date => timeline[date].revenue);
 
-        // Revenue Chart (Bar)
-        const dates = Object.keys(data.timeline).sort();
-        const revenueValues = dates.map(d => data.timeline[d].revenue);
-
-        renderChart("revenueChart", {
-          type: 'bar',
-          data: {
-            labels: dates,
-            datasets: [{
-              label: "Revenue",
-              backgroundColor: "#4CAF50",
-              data: revenueValues
-            }]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: { beginAtZero: true }
-            }
+      if (revenueChart) revenueChart.destroy();
+      revenueChart = new Chart(document.getElementById("revenueChart").getContext("2d"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Revenue",
+            data,
+            backgroundColor: "rgba(54, 162, 235, 0.6)"
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "Date" } },
+            y: { title: { display: true, text: "Revenue (PHP)" } }
           }
-        });
+        }
+      });
+    }
 
-        // Sales by Supplier (Pie)
-        const suppliers = Object.keys(data.salesBySupplier);
-        const supplierSales = suppliers.map(s => data.salesBySupplier[s]);
+    function renderSupplierChart(salesBySupplier) {
+      const labels = Object.keys(salesBySupplier);
+      const data = labels.map(s => salesBySupplier[s]);
 
-        renderChart("salesSupplierChart", {
-          type: 'pie',
-          data: {
-            labels: suppliers,
-            datasets: [{
-              label: "Sales by Supplier",
-              backgroundColor: generateColors(suppliers.length),
-              data: supplierSales
-            }]
-          },
-          options: { responsive: true }
-        });
-      }
+      if (supplierChart) supplierChart.destroy();
+      supplierChart = new Chart(document.getElementById("supplierChart").getContext("2d"), {
+        type: "pie",
+        data: {
+          labels,
+          datasets: [{
+            label: "Sales by Supplier",
+            data,
+            backgroundColor: labels.map(() => `hsl(${Math.random() * 360}, 70%, 60%)`)
+          }]
+        },
+        options: {
+          responsive: true
+        }
+      });
+    }
 
-      function renderChart(canvasId, config) {
-        const ctx = document.getElementById(canvasId).getContext("2d");
-        if (window[canvasId]) window[canvasId].destroy();
-        window[canvasId] = new Chart(ctx, config);
-      }
-
-      function generateColors(n) {
-        const colors = [
-          "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF",
-          "#FF9F40", "#E7E9ED", "#8BC34A", "#03A9F4", "#FF5722"
-        ];
-        return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
-      }
-
-      // Initial load
-      window.onload = loadData;
-    </script>
-  </body>
+    // Auto load on page open
+    window.onload = fetchDashboardData;
+  </script>
+</body>
 </html>
+
