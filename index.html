@@ -1,25 +1,18 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Sales Dashboard</title>
+    <base target="_top">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
         font-family: Arial, sans-serif;
         margin: 20px;
       }
-      .summary-boxes {
-        display: flex;
-        gap: 20px;
+      .filters {
         margin-bottom: 20px;
       }
-      .box {
-        padding: 20px;
-        border-radius: 10px;
-        background-color: #f0f0f0;
-        flex: 1;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      .chart-container {
+        margin-top: 30px;
       }
       canvas {
         max-width: 100%;
@@ -27,130 +20,123 @@
     </style>
   </head>
   <body>
-    <h1>Sales Dashboard</h1>
+    <h2>Sales Dashboard</h2>
 
-    <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate" />
-    <label for="endDate">End Date:</label>
-    <input type="date" id="endDate" />
-    <label for="supplier">Supplier:</label>
-    <select id="supplier"></select>
-    <button onclick="loadData()">Apply Filters</button>
-
-    <div class="summary-boxes">
-      <div class="box" id="salesBox">Total Sales: ₱0</div>
-      <div class="box" id="purchasesBox">Total Purchases: 0</div>
-      <div class="box" id="revenueBox">Total Revenue: ₱0</div>
+    <div class="filters">
+      <label>Start Date: <input type="date" id="startDate"></label>
+      <label>End Date: <input type="date" id="endDate"></label>
+      <label>Supplier:
+        <select id="supplier">
+          <option value="">All</option>
+        </select>
+      </label>
+      <button onclick="loadData()">Load</button>
     </div>
 
-    <canvas id="revenueChart" height="100"></canvas>
-    <canvas id="supplierPieChart" height="100"></canvas>
+    <div>
+      <strong>Total Sales:</strong> ₱<span id="totalSales">0</span><br>
+      <strong>Total Revenue:</strong> ₱<span id="totalRevenue">0</span><br>
+      <strong>Total Purchases:</strong> <span id="totalPurchases">0</span>
+    </div>
+
+    <div class="chart-container">
+      <h3>Revenue Over Time</h3>
+      <canvas id="revenueChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h3>Sales by Supplier</h3>
+      <canvas id="salesSupplierChart"></canvas>
+    </div>
 
     <script>
-      let revenueChart, supplierPieChart;
-
-      function loadData() {
+      async function loadData() {
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
         const supplier = document.getElementById("supplier").value;
 
-        const params = new URLSearchParams({
-          startDate,
-          endDate,
-          supplier
-        });
+        let url = new URL(window.location.href);
+        url.pathname = '/exec'; // Adjust this if needed
+        url.searchParams.set("startDate", startDate);
+        url.searchParams.set("endDate", endDate);
+        url.searchParams.set("supplier", supplier);
 
-        fetch("https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec" + params)
-          .then(res => res.json())
-          .then(data => {
-            updateSummary(data.totals);
-            renderRevenueChart(data.timeline);
-            renderPieChart(data.salesBySupplier);
-            populateSupplierDropdown(data.allSuppliers);
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log(data); // <-- See Step 2 debug output
+
+        // Update totals
+        document.getElementById("totalSales").textContent = data.totals.sales.toLocaleString();
+        document.getElementById("totalRevenue").textContent = data.totals.revenue.toLocaleString();
+        document.getElementById("totalPurchases").textContent = data.totals.purchases.toLocaleString();
+
+        // Populate supplier dropdown if empty
+        const supplierDropdown = document.getElementById("supplier");
+        if (supplierDropdown.options.length <= 1) {
+          data.allSuppliers.forEach(sup => {
+            const option = document.createElement("option");
+            option.value = sup;
+            option.text = sup;
+            supplierDropdown.appendChild(option);
           });
-      }
+        }
 
-      function updateSummary(totals) {
-        document.getElementById("salesBox").innerText = `Total Sales: ₱${totals.sales.toLocaleString()}`;
-        document.getElementById("purchasesBox").innerText = `Total Purchases: ${totals.purchases}`;
-        document.getElementById("revenueBox").innerText = `Total Revenue: ₱${totals.revenue.toLocaleString()}`;
-      }
+        // Revenue Chart (Bar)
+        const dates = Object.keys(data.timeline).sort();
+        const revenueValues = dates.map(d => data.timeline[d].revenue);
 
-      function renderRevenueChart(timeline) {
-        const labels = Object.keys(timeline).sort();
-        const revenueData = labels.map(date => timeline[date].revenue);
-
-        const ctx = document.getElementById("revenueChart").getContext("2d");
-        if (revenueChart) revenueChart.destroy();
-
-        revenueChart = new Chart(ctx, {
+        renderChart("revenueChart", {
           type: 'bar',
           data: {
-            labels,
+            labels: dates,
             datasets: [{
-              label: 'Revenue',
-              data: revenueData,
-              backgroundColor: 'rgba(54, 162, 235, 0.7)'
+              label: "Revenue",
+              backgroundColor: "#4CAF50",
+              data: revenueValues
             }]
           },
           options: {
             responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'Revenue Over Time'
-              }
+            scales: {
+              y: { beginAtZero: true }
             }
           }
         });
-      }
 
-      function renderPieChart(data) {
-        const labels = Object.keys(data);
-        const values = labels.map(label => data[label]);
+        // Sales by Supplier (Pie)
+        const suppliers = Object.keys(data.salesBySupplier);
+        const supplierSales = suppliers.map(s => data.salesBySupplier[s]);
 
-        const ctx = document.getElementById("supplierPieChart").getContext("2d");
-        if (supplierPieChart) supplierPieChart.destroy();
-
-        supplierPieChart = new Chart(ctx, {
+        renderChart("salesSupplierChart", {
           type: 'pie',
           data: {
-            labels,
+            labels: suppliers,
             datasets: [{
-              label: 'Sales by Supplier',
-              data: values,
-              backgroundColor: labels.map((_, i) =>
-                `hsl(${i * 30 % 360}, 70%, 60%)`
-              )
+              label: "Sales by Supplier",
+              backgroundColor: generateColors(suppliers.length),
+              data: supplierSales
             }]
           },
-          options: {
-            responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'Sales Distribution by Supplier'
-              }
-            }
-          }
+          options: { responsive: true }
         });
       }
 
-      function populateSupplierDropdown(suppliers) {
-        const dropdown = document.getElementById("supplier");
-        const current = dropdown.value;
-        dropdown.innerHTML = '<option value="">All Suppliers</option>';
-        suppliers.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s;
-          opt.text = s;
-          dropdown.appendChild(opt);
-        });
-        dropdown.value = current;
+      function renderChart(canvasId, config) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+        if (window[canvasId]) window[canvasId].destroy();
+        window[canvasId] = new Chart(ctx, config);
+      }
+
+      function generateColors(n) {
+        const colors = [
+          "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF",
+          "#FF9F40", "#E7E9ED", "#8BC34A", "#03A9F4", "#FF5722"
+        ];
+        return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
       }
 
       // Initial load
-      loadData();
+      window.onload = loadData;
     </script>
   </body>
 </html>
