@@ -1,194 +1,238 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
-<title>Inventory Dashboard</title>
+<base target="_top">
+<title>Sales Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial; margin: 20px; background: #f4f4f4; }
-.summary { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; }
-.box {
-flex: 1; min-width: 180px;
-background: #fff; padding: 15px;
-border: 1px solid #ccc; text-align: center;
-font-weight: bold; font-size: 16px;
+body {
+font-family: Arial, sans-serif;
+margin: 20px;
+padding: 0;
 }
-#totalSalesBox { background: #e0f7fa; }
-#totalPurchasesBox { background: #f1f8e9; }
-#totalRevenueBox { background: #fff3e0; }
 
-label, select, input { margin: 10px; }
-canvas { background: white; border: 1px solid #ccc; }
-table {
-width: 100%; border-collapse: collapse; background: white; margin-top: 20px;
+.filters {
+margin-bottom: 20px;
 }
-th, td { border: 1px solid #ccc; padding: 8px; }
-th { background: #eee; }
-.charts { margin-top: 30px; }
-@media screen and (max-width: 600px) {
-.summary { flex-direction: column; }
+
+.summary {
+display: flex;
+flex-wrap: wrap;
+gap: 15px;
+margin-bottom: 30px;
+}
+
+.summary div {
+flex: 1;
+min-width: 150px;
+padding: 15px;
+border-radius: 8px;
+color: white;
+font-size: 18px;
+font-weight: bold;
+text-align: center;
+}
+
+.sales-box { background: #4CAF50; }
+.purchases-box { background: #2196F3; }
+.revenue-box { background: #FF9800; }
+
+canvas {
+max-width: 100%;
+}
+
+.charts {
+display: flex;
+flex-direction: column;
+gap: 40px;
+}
+
+.chart-container {
+width: 100%;
+max-width: 100%;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 20px;
+}
+
+th, td {
+border: 1px solid #ccc;
+padding: 8px;
+text-align: left;
+}
+
+th {
+background: #f5f5f5;
+}
+
+@media (min-width: 768px) {
+.charts {
+flex-direction: row;
+gap: 20px;
+}
+
+.chart-container {
+flex: 1;
+}
 }
 </style>
 </head>
 <body>
-<h2>Inventory Dashboard</h2>
+<h2>Sales Dashboard</h2>
 
-<label>Start Date: <input type="date" id="startDate" /></label>
-<label>End Date: <input type="date" id="endDate" /></label>
-<label>Supplier:
-<select id="supplierFilter">
-<option value="">All Suppliers</option>
-</select>
-</label>
-<button onclick="loadDashboard()">Load Dashboard</button>
+<div class="filters">
+<label>Start Date: <input type="date" id="startDate"></label>
+<label>End Date: <input type="date" id="endDate"></label>
+<label>Supplier: <select id="supplier"><option value="">All</option></select></label>
+<button onclick="loadData()">Apply</button>
+</div>
 
 <div class="summary">
-<div class="box" id="totalSalesBox">Total Sales: 0.00</div>
-<div class="box" id="totalPurchasesBox">Total Purchases: 0.00</div>
-<div class="box" id="totalRevenueBox">Total Revenue: 0.00</div>
+<div class="sales-box" id="totalSales">Sales: </div>
+<div class="purchases-box" id="totalPurchases">Purchases: </div>
+<div class="revenue-box" id="totalRevenue">Revenue: </div>
 </div>
 
 <div class="charts">
-<canvas id="salesRevenueChart" height="300"></canvas>
+<div class="chart-container">
+<canvas id="salesRevenueChart"></canvas>
 </div>
+</div>
+
+<h3>Revenue by Supplier</h3>
+<table id="revenueBySupplierTable">
+<thead>
+<tr><th>Supplier</th><th>Revenue</th><th>Total Sales</th><th>Total Purchases</th></tr>
+</thead>
+<tbody></tbody>
+</table>
 
 <h3>Top 10 Items by Quantity Sold</h3>
 <table id="topSalesTable">
-<thead><tr><th>Item</th><th>Quantity</th><th>Sales</th></tr></thead>
+<thead>
+<tr><th>Item</th><th>Quantity</th><th>Sales</th></tr>
+</thead>
 <tbody></tbody>
 </table>
 
 <h3>Top 10 Items by Revenue</h3>
 <table id="topRevenueTable">
-<thead><tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr></thead>
-<tbody></tbody>
-</table>
-
-<h3>Revenue by Supplier</h3>
-<table id="supplierRevenueTable">
-<thead><tr><th>Supplier</th><th>Revenue</th><th>Total Sales</th><th>Total Purchases</th></tr></thead>
+<thead>
+<tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr>
+</thead>
 <tbody></tbody>
 </table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec"; // Replace with your actual URL
-let charts = [];
-
-async function loadDashboard() {
+async function loadData() {
 const startDate = document.getElementById("startDate").value;
 const endDate = document.getElementById("endDate").value;
-const supplier = document.getElementById("supplierFilter").value;
-let url = `${API_URL}?supplier=${encodeURIComponent(supplier)}`;
-if (startDate) url += `&startDate=${startDate}`;
-if (endDate) url += `&endDate=${endDate}`;
+const supplier = document.getElementById("supplier").value;
+const url = `https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec`;
 
-try {
 const res = await fetch(url);
 const data = await res.json();
 
-formatBox("totalSalesBox", "Total Sales", data.totals.sales);
-formatBox("totalPurchasesBox", "Total Purchases", data.totals.purchases);
-formatBox("totalRevenueBox", "Total Revenue", data.totals.revenue);
+document.getElementById("totalSales").textContent = "Sales: " + data.totals.sales;
+document.getElementById("totalPurchases").textContent = "Purchases: " + data.totals.purchases;
+document.getElementById("totalRevenue").textContent = "Revenue: " + data.totals.revenue;
 
-populateTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
-populateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-populateTable("supplierRevenueTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
-
-clearCharts();
-renderLineChart("salesRevenueChart", data.timeline);
-
-populateSupplierFilter(data.allSuppliers);
-} catch (error) {
-alert("Error loading dashboard: " + error.message);
-console.error(error);
-}
+updateSalesRevenueChart(data.timeline);
+updateTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
+updateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
+updateRevenueBySupplierTable(data.revenueBySupplier);
+populateSupplierDropdown(data.allSuppliers);
 }
 
-function formatBox(id, label, value) {
-document.getElementById(id).textContent = `${label}: ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+function updateSalesRevenueChart(timeline) {
+const labels = Object.keys(timeline);
+const sales = labels.map(date => timeline[date].sales);
+const revenue = labels.map(date => timeline[date].revenue);
+
+if (window.salesRevenueChart) {
+window.salesRevenueChart.destroy();
 }
 
-function populateTable(id, data, keys) {
-const tbody = document.getElementById(id).querySelector("tbody");
+const ctx = document.getElementById("salesRevenueChart").getContext("2d");
+window.salesRevenueChart = new Chart(ctx, {
+type: "line",
+data: {
+labels,
+datasets: [
+{
+label: "Sales",
+data: sales,
+borderColor: "#4CAF50",
+fill: false
+},
+{
+label: "Revenue",
+data: revenue,
+borderColor: "#FF9800",
+fill: false
+}
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+x: { title: { display: true, text: "Date" } },
+y: { title: { display: true, text: "Amount" }, beginAtZero: true }
+}
+}
+});
+}
+
+function updateTable(tableId, data, keys) {
+const tbody = document.getElementById(tableId).querySelector("tbody");
 tbody.innerHTML = "";
 data.forEach(row => {
 const tr = document.createElement("tr");
 keys.forEach(key => {
 const td = document.createElement("td");
-td.textContent = (typeof row[key] === "number")
-? Number(row[key]).toLocaleString(undefined, { minimumFractionDigits: 2 })
-: row[key];
+td.textContent = typeof row[key] === "number" ? row[key].toLocaleString() : row[key];
 tr.appendChild(td);
 });
 tbody.appendChild(tr);
 });
 }
 
-function renderLineChart(id, timeline) {
-const ctx = document.getElementById(id).getContext("2d");
-const labels = Object.keys(timeline).sort();
-const salesData = labels.map(date => timeline[date].sales || 0);
-const revenueData = labels.map(date => timeline[date].revenue || 0);
-const formattedLabels = labels.map(d => {
-const [y, m, d2] = d.split("-");
-return `${m}/${d2}/`;
+function updateRevenueBySupplierTable(data) {
+const tbody = document.getElementById("revenueBySupplierTable").querySelector("tbody");
+tbody.innerHTML = "";
+for (const supplier in data) {
+const row = data[supplier];
+const tr = document.createElement("tr");
+[supplier, row.revenue, row.sales, row.purchases].forEach(val => {
+const td = document.createElement("td");
+td.textContent = typeof val === "number" ? val.toLocaleString() : val;
+tr.appendChild(td);
 });
-
-const chart = new Chart(ctx, {
-type: "line",
-data: {
-labels: formattedLabels,
-datasets: [
-{
-label: "Sales",
-data: salesData,
-borderColor: "#2196F3",
-backgroundColor: "rgba(33,150,243,0.1)",
-tension: 0.3
-},
-{
-label: "Revenue",
-data: revenueData,
-borderColor: "#FF9800",
-backgroundColor: "rgba(255,152,0,0.1)",
-tension: 0.3
+tbody.appendChild(tr);
 }
-]
-},
-options: {
-responsive: true,
-plugins: { legend: { position: 'top' }},
-scales: {
-y: { beginAtZero: true },
-x: { ticks: { autoSkip: true, maxRotation: 45, minRotation: 45 } }
-}
-}
-});
-charts.push(chart);
 }
 
-function populateSupplierFilter(suppliers) {
-const select = document.getElementById("supplierFilter");
-const current = select.value;
-select.innerHTML = '<option value="">All Suppliers</option>';
+function populateSupplierDropdown(suppliers) {
+const dropdown = document.getElementById("supplier");
+dropdown.innerHTML = `<option value="">All</option>`;
 suppliers.forEach(s => {
 const opt = document.createElement("option");
 opt.value = s;
-opt.textContent = s === "Blank" ? "No Supplier" : s;
-select.appendChild(opt);
+opt.textContent = s;
+dropdown.appendChild(opt);
 });
-select.value = current;
 }
 
-function clearCharts() {
-charts.forEach(c => c.destroy());
-charts = [];
-}
-
-window.onload = loadDashboard;
+loadData();
 </script>
 </body>
 </html>
+
+
 
 
 
