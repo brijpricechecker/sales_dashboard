@@ -6,175 +6,259 @@
 <style>
 body {
 font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+}
+
+.container {
+max-width: 1200px;
+margin: auto;
 padding: 10px;
 }
-.summary {
-display: flex;
-flex-wrap: wrap;
-gap: 15px;
-margin-bottom: 20px;
-}
-.summary-box {
-flex: 1;
-min-width: 150px;
-background: #f0f0f0;
-padding: 10px;
-border-radius: 5px;
+
+h2 {
 text-align: center;
 }
-.summary-box.sales { background-color: #d1f2eb; }
-.summary-box.purchases { background-color: #fdebd0; }
-.summary-box.revenue { background-color: #e8daef; }
-canvas {
-max-width: 100%;
-height: auto;
-}
-.table-container {
-overflow-x: auto;
-margin-top: 20px;
-}
-table {
-border-collapse: collapse;
-width: 100%;
+
+.summary-boxes {
+display: flex;
+flex-wrap: wrap;
+justify-content: space-around;
 margin-bottom: 20px;
 }
-th, td {
+
+.box {
+flex: 1 1 30%;
+background-color: #f4f4f4;
+margin: 10px;
+padding: 20px;
+text-align: center;
+font-size: 1.2em;
+border-radius: 8px;
+}
+
+.box.sales {
+background-color: #c6f6d5;
+}
+
+.box.purchases {
+background-color: #bee3f8;
+}
+
+.box.revenue {
+background-color: #fed7e2;
+}
+
+.filters {
+display: flex;
+flex-wrap: wrap;
+justify-content: center;
+gap: 10px;
+margin-bottom: 20px;
+}
+
+.filters input,
+.filters select {
+padding: 5px;
+font-size: 1em;
+}
+
+canvas {
+width: 100% !important;
+max-width: 100%;
+height: auto !important;
+}
+
+.charts-container {
+display: flex;
+flex-wrap: wrap;
+gap: 20px;
+justify-content: center;
+}
+
+.chart-box {
+flex: 1 1 500px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin: 20px 0;
+}
+
+table, th, td {
 border: 1px solid #ccc;
-padding: 6px;
+}
+
+th, td {
+padding: 10px;
 text-align: left;
 }
-th {
-background: #f5f5f5;
-}
+
 @media (max-width: 768px) {
-.summary {
+.summary-boxes, .charts-container {
 flex-direction: column;
+align-items: center;
+}
+
+.chart-box {
+width: 100%;
 }
 }
 </style>
 </head>
 <body>
-
+<div class="container">
 <h2>Sales Dashboard</h2>
 
-<div class="summary">
-<div class="summary-box sales">
-<strong>Total Sales</strong>
-<div id="totalSales">-</div>
-</div>
-<div class="summary-box purchases">
-<strong>Total Purchases</strong>
-<div id="totalPurchases">-</div>
-</div>
-<div class="summary-box revenue">
-<strong>Total Revenue</strong>
-<div id="totalRevenue">-</div>
-</div>
+<div class="filters">
+<label>Start Date: <input type="date" id="startDate"></label>
+<label>End Date: <input type="date" id="endDate"></label>
+<label>Supplier:
+<select id="supplierSelect">
+<option value="">All</option>
+</select>
+</label>
+<button onclick="loadData()">Apply Filters</button>
 </div>
 
-<canvas id="lineChart"></canvas>
+<div class="summary-boxes">
+<div class="box sales" id="totalSales">Total Sales: 0</div>
+<div class="box purchases" id="totalPurchases">Total Purchases: 0</div>
+<div class="box revenue" id="totalRevenue">Total Revenue: 0</div>
+</div>
 
-<div class="table-container">
-<h3>Top 10 Items by Quantity Sold</h3>
-<table>
-<thead>
-<tr><th>Item</th><th>Quantity</th><th>Sales</th></tr>
-</thead>
-<tbody id="topQuantityTable"></tbody>
-</table>
-
-<h3>Top 10 Items by Revenue</h3>
-<table>
-<thead>
-<tr><th>Item</th><th>Revenue</th><th>Quantity</th></tr>
-</thead>
-<tbody id="topRevenueTable"></tbody>
-</table>
+<div class="charts-container">
+<div class="chart-box">
+<canvas id="salesRevenueLineChart"></canvas>
+</div>
+</div>
 
 <h3>Revenue by Supplier</h3>
-<table>
-<thead>
-<tr><th>Supplier</th><th>Revenue</th><th>Sales</th><th>Purchases</th></tr>
-</thead>
-<tbody id="supplierTable"></tbody>
-</table>
+<div id="supplierRevenueTableContainer"></div>
+
+<h3>Top 10 Items by Quantity Sold</h3>
+<div id="top10SalesTableContainer"></div>
+
+<h3>Top 10 Items by Revenue</h3>
+<div id="top10RevenueTableContainer"></div>
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec'; // Replace with your deployed Web App URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec';
+
+let salesRevenueChart;
+
+async function loadData() {
+const startDate = document.getElementById('startDate').value;
+const endDate = document.getElementById('endDate').value;
+const supplier = document.getElementById('supplierSelect').value;
+
+const url = `${API_URL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(supplier)}`;
+
+const response = await fetch(url);
+const data = await response.json();
+
+document.getElementById('totalSales').innerText = 'Total Sales: ' + formatNumber(data.totalSales);
+document.getElementById('totalPurchases').innerText = 'Total Purchases: ' + formatNumber(data.totalPurchases);
+document.getElementById('totalRevenue').innerText = 'Total Revenue: ' + formatNumber(data.totalRevenue);
+
+renderSalesRevenueChart(data.salesRevenueData);
+renderTable(data.supplierRevenueTable, 'supplierRevenueTableContainer');
+renderTable(data.top10SalesTable, 'top10SalesTableContainer');
+renderTable(data.top10RevenueTable, 'top10RevenueTableContainer');
+
+updateSupplierOptions(data.suppliers);
+}
 
 function formatNumber(num) {
-return Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+return parseFloat(num || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-async function fetchData() {
-const response = await fetch(`${API_URL}?action=getDashboardData`);
-const data = await response.json();
-updateDashboard(data);
-}
+function renderSalesRevenueChart(data) {
+const ctx = document.getElementById('salesRevenueLineChart').getContext('2d');
+if (salesRevenueChart) salesRevenueChart.destroy();
 
-function updateDashboard(data) {
-document.getElementById("totalSales").textContent = formatNumber(data.totalSales || 0);
-document.getElementById("totalPurchases").textContent = formatNumber(data.totalPurchases || 0);
-document.getElementById("totalRevenue").textContent = formatNumber(data.totalRevenue || 0);
+const labels = data.map(d => d.date);
+const sales = data.map(d => d.sales);
+const revenue = data.map(d => d.revenue);
 
-// Line Chart
-const ctx = document.getElementById('lineChart').getContext('2d');
-const labels = data.salesLineData.map(d => d.date);
-const salesData = data.salesLineData.map(d => d.sales);
-const revenueData = data.salesLineData.map(d => d.revenue);
-
-new Chart(ctx, {
+salesRevenueChart = new Chart(ctx, {
 type: 'line',
 data: {
 labels,
 datasets: [
 {
 label: 'Sales',
-data: salesData,
+data: sales,
 borderColor: 'blue',
-fill: false,
+fill: false
 },
 {
 label: 'Revenue',
-data: revenueData,
+data: revenue,
 borderColor: 'green',
-fill: false,
+fill: false
 }
 ]
 },
 options: {
 responsive: true,
-maintainAspectRatio: false,
 scales: {
-x: { title: { display: true, text: 'Date' } },
-y: { title: { display: true, text: 'Amount' } }
+x: {
+ticks: {
+callback: value => {
+const label = labels[value];
+return label ? label.split('/').slice(0, 2).join('/') : '';
+}
+}
+}
 }
 }
 });
-
-// Tables
-const qtyRows = data.top10Quantity.map(item =>
-`<tr><td>${item.item}</td><td>${item.quantity}</td><td>${formatNumber(item.sales)}</td></tr>`
-).join('');
-document.getElementById("topQuantityTable").innerHTML = qtyRows;
-
-const revRows = data.top10Revenue.map(item =>
-`<tr><td>${item.item}</td><td>${formatNumber(item.revenue)}</td><td>${item.quantity}</td></tr>`
-).join('');
-document.getElementById("topRevenueTable").innerHTML = revRows;
-
-const supRows = data.supplierTable.map(s =>
-`<tr><td>${s.supplier}</td><td>${formatNumber(s.revenue)}</td><td>${formatNumber(s.sales)}</td><td>${formatNumber(s.purchases)}</td></tr>`
-).join('');
-document.getElementById("supplierTable").innerHTML = supRows;
 }
 
-fetchData();
-</script>
+function renderTable(data, containerId) {
+const container = document.getElementById(containerId);
+if (!data || data.length === 0) {
+container.innerHTML = '<p>No data available.</p>';
+return;
+}
 
+let table = '<table><thead><tr>';
+Object.keys(data[0]).forEach(key => {
+table += `<th>${key}</th>`;
+});
+table += '</tr></thead><tbody>';
+
+data.forEach(row => {
+table += '<tr>';
+Object.values(row).forEach(value => {
+table += `<td>${typeof value === 'number' ? formatNumber(value) : value}</td>`;
+});
+table += '</tr>';
+});
+
+table += '</tbody></table>';
+container.innerHTML = table;
+}
+
+function updateSupplierOptions(suppliers) {
+const select = document.getElementById('supplierSelect');
+select.innerHTML = '<option value="">All</option>';
+suppliers.forEach(supplier => {
+const option = document.createElement('option');
+option.value = supplier;
+option.textContent = supplier;
+select.appendChild(option);
+});
+}
+
+window.onload = loadData;
+</script>
 </body>
 </html>
+
 
 
 
