@@ -5,34 +5,96 @@
 <title>Inventory Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial; margin: 20px; background: #f4f4f4; }
-.summary { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; }
+body {
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 10px;
+background: #f4f4f4;
+}
+h2 {
+text-align: center;
+}
+label, select, input {
+margin: 10px;
+}
+button {
+margin-left: 10px;
+padding: 6px 12px;
+}
+.summary {
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+justify-content: space-around;
+margin: 20px 0;
+}
 .box {
-flex: 1; min-width: 180px;
-background: #fff; padding: 15px;
-border: 1px solid #ccc; text-align: center;
-font-weight: bold; font-size: 16px;
+flex: 1;
+min-width: 180px;
+background: #fff;
+padding: 15px;
+border: 1px solid #ccc;
+text-align: center;
+font-weight: bold;
+font-size: 16px;
 }
 #totalSalesBox { background: #e0f7fa; }
 #totalPurchasesBox { background: #f1f8e9; }
 #totalRevenueBox { background: #fff3e0; }
 
-label, select, input { margin: 10px; }
-canvas { background: white; border: 1px solid #ccc; margin-top: 20px; }
-table {
-width: 100%; border-collapse: collapse; background: white; margin-top: 20px;
+.chart-wrapper {
+display: flex;
+flex-wrap: wrap;
+gap: 20px;
+justify-content: space-between;
+margin-bottom: 20px;
 }
-th, td { border: 1px solid #ccc; padding: 8px; }
-th { background: #eee; }
-.charts { margin-top: 30px; }
-@media screen and (max-width: 600px) {
-.summary { flex-direction: column; }
+.chart-container {
+flex: 1;
+min-width: 300px;
+max-width: 100%;
+height: 350px;
+overflow: auto;
+background: white;
+border: 1px solid #ccc;
+padding: 10px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+background: white;
+margin-top: 10px;
+}
+th, td {
+border: 1px solid #ccc;
+padding: 8px;
+text-align: center;
+}
+th {
+background: #eee;
+}
+
+.table-wrapper {
+max-height: 250px;
+overflow-y: auto;
+overflow-x: auto;
+margin-bottom: 20px;
+background: white;
+border: 1px solid #ccc;
+}
+
+@media screen and (max-width: 768px) {
+.chart-wrapper {
+flex-direction: column;
+}
 }
 </style>
 </head>
 <body>
 <h2>Inventory Dashboard</h2>
 
+<div>
 <label>Start Date: <input type="date" id="startDate" /></label>
 <label>End Date: <input type="date" id="endDate" /></label>
 <label>Supplier:
@@ -41,6 +103,7 @@ th { background: #eee; }
 </select>
 </label>
 <button onclick="loadDashboard()">Load Dashboard</button>
+</div>
 
 <div class="summary">
 <div class="box" id="totalSalesBox">Total Sales: 0.00</div>
@@ -48,37 +111,48 @@ th { background: #eee; }
 <div class="box" id="totalRevenueBox">Total Revenue: 0.00</div>
 </div>
 
-<div class="charts">
-<canvas id="salesRevenueChart" height="250"></canvas>
-<canvas id="monthlyBarChart" height="300"></canvas>
+<div class="chart-wrapper">
+<div class="chart-container">
+<canvas id="salesRevenueChart"></canvas>
+</div>
+<div class="chart-container">
+<canvas id="monthlyChart"></canvas>
+</div>
 </div>
 
 <h3>Top 10 Items by Quantity Sold</h3>
+<div class="table-wrapper">
 <table id="topSalesTable">
 <thead><tr><th>Item</th><th>Quantity</th><th>Sales</th></tr></thead>
 <tbody></tbody>
 </table>
+</div>
 
 <h3>Top 10 Items by Revenue</h3>
+<div class="table-wrapper">
 <table id="topRevenueTable">
 <thead><tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr></thead>
 <tbody></tbody>
 </table>
+</div>
 
 <h3>Revenue by Supplier</h3>
+<div class="table-wrapper">
 <table id="supplierRevenueTable">
 <thead><tr><th>Supplier</th><th>Revenue</th><th>Total Sales</th><th>Total Purchases</th></tr></thead>
 <tbody></tbody>
 </table>
+</div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec"; // Replace with actual URL
+const API_URL = "https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec"; // Replace with your actual URL
 let charts = [];
 
 async function loadDashboard() {
 const startDate = document.getElementById("startDate").value;
 const endDate = document.getElementById("endDate").value;
 const supplier = document.getElementById("supplierFilter").value;
+
 let url = `${API_URL}?supplier=${encodeURIComponent(supplier)}`;
 if (startDate) url += `&startDate=${startDate}`;
 if (endDate) url += `&endDate=${endDate}`;
@@ -96,8 +170,8 @@ populateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"
 populateTable("supplierRevenueTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
 
 clearCharts();
-renderSalesRevenueChart(data.timeline);
-renderMonthlyBarChart(data.timeline);
+renderLineChart("salesRevenueChart", data.timeline);
+renderBarChart("monthlyChart", data.monthlyStats);
 
 populateSupplierFilter(data.allSuppliers);
 } catch (error) {
@@ -126,29 +200,29 @@ tbody.appendChild(tr);
 });
 }
 
-function renderSalesRevenueChart(timeline) {
-const ctx = document.getElementById("salesRevenueChart").getContext("2d");
+function renderLineChart(id, timeline) {
+const ctx = document.getElementById(id).getContext("2d");
 const labels = Object.keys(timeline).sort();
-const salesData = labels.map(d => timeline[d].sales || 0);
-const revenueData = labels.map(d => timeline[d].revenue || 0);
+const salesData = labels.map(date => timeline[date].sales || 0);
+const revenueData = labels.map(date => timeline[date].revenue || 0);
 
 const chart = new Chart(ctx, {
-type: 'line',
+type: "line",
 data: {
-labels: labels,
+labels,
 datasets: [
 {
-label: 'Sales',
+label: "Sales",
 data: salesData,
-borderColor: '#2196F3',
-backgroundColor: 'rgba(33,150,243,0.1)',
+borderColor: "#2196F3",
+backgroundColor: "rgba(33,150,243,0.1)",
 tension: 0.3
 },
 {
-label: 'Revenue',
+label: "Revenue",
 data: revenueData,
-borderColor: '#FF9800',
-backgroundColor: 'rgba(255,152,0,0.1)',
+borderColor: "#FF9800",
+backgroundColor: "rgba(255,152,0,0.1)",
 tension: 0.3
 }
 ]
@@ -158,55 +232,42 @@ responsive: true,
 plugins: { legend: { position: 'top' }},
 scales: {
 y: { beginAtZero: true },
-x: { ticks: { autoSkip: true } }
+x: { ticks: { autoSkip: true, maxRotation: 45, minRotation: 45 } }
 }
 }
 });
 charts.push(chart);
 }
 
-function renderMonthlyBarChart(timeline) {
-const ctx = document.getElementById("monthlyBarChart").getContext("2d");
-const monthlyMap = {};
-
-Object.entries(timeline).forEach(([key, data]) => {
-const [mm] = key.split("/");
-const month = mm;
-if (!monthlyMap[month]) monthlyMap[month] = { sales: 0, purchases: 0 };
-monthlyMap[month].sales += data.sales || 0;
-monthlyMap[month].purchases += data.purchases || 0;
-});
-
-const months = Object.keys(monthlyMap).sort();
-const sales = months.map(m => monthlyMap[m].sales || 0);
-const purchases = months.map(m => monthlyMap[m].purchases || 0);
+function renderBarChart(id, data) {
+const ctx = document.getElementById(id).getContext("2d");
+const labels = Object.keys(data).sort();
+const salesData = labels.map(m => data[m].sales || 0);
+const purchasesData = labels.map(m => data[m].purchases || 0);
 
 const chart = new Chart(ctx, {
-type: 'bar',
+type: "bar",
 data: {
-labels: months,
+labels,
 datasets: [
 {
-label: "Total Sales",
-data: sales,
-backgroundColor: "#42a5f5"
+label: "Sales",
+data: salesData,
+backgroundColor: "#42A5F5"
 },
 {
-label: "Total Purchases",
-data: purchases,
-backgroundColor: "#66bb6a"
+label: "Purchases",
+data: purchasesData,
+backgroundColor: "#66BB6A"
 }
 ]
 },
 options: {
 responsive: true,
 plugins: { legend: { position: 'top' }},
-scales: {
-y: { beginAtZero: true }
-}
+scales: { y: { beginAtZero: true } }
 }
 });
-
 charts.push(chart);
 }
 
