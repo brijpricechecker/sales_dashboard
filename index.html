@@ -18,7 +18,7 @@ font-weight: bold; font-size: 16px;
 #totalRevenueBox { background: #fff3e0; }
 
 label, select, input { margin: 10px; }
-canvas { background: white; border: 1px solid #ccc; }
+canvas { background: white; border: 1px solid #ccc; margin-top: 20px; }
 table {
 width: 100%; border-collapse: collapse; background: white; margin-top: 20px;
 }
@@ -49,7 +49,8 @@ th { background: #eee; }
 </div>
 
 <div class="charts">
-<canvas id="salesRevenueChart" height="300"></canvas>
+<canvas id="salesRevenueChart" height="250"></canvas>
+<canvas id="monthlyBarChart" height="300"></canvas>
 </div>
 
 <h3>Top 10 Items by Quantity Sold</h3>
@@ -71,7 +72,7 @@ th { background: #eee; }
 </table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec"; // Replace with your actual URL
+const API_URL = "https://script.google.com/macros/s/AKfycbwA2KDBI3mwXx8mn6n5ICO5tVAexOCRxHGr2IwXnWwvifmHY6-lhX4wB-6NDsQ_ppg/exec"; // Replace with actual URL
 let charts = [];
 
 async function loadDashboard() {
@@ -95,7 +96,8 @@ populateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"
 populateTable("supplierRevenueTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
 
 clearCharts();
-renderLineChart("salesRevenueChart", data.timeline);
+renderSalesRevenueChart(data.timeline);
+renderMonthlyBarChart(data.timeline);
 
 populateSupplierFilter(data.allSuppliers);
 } catch (error) {
@@ -124,33 +126,29 @@ tbody.appendChild(tr);
 });
 }
 
-function renderLineChart(id, timeline) {
-const ctx = document.getElementById(id).getContext("2d");
+function renderSalesRevenueChart(timeline) {
+const ctx = document.getElementById("salesRevenueChart").getContext("2d");
 const labels = Object.keys(timeline).sort();
-const salesData = labels.map(date => timeline[date].sales || 0);
-const revenueData = labels.map(date => timeline[date].revenue || 0);
-const formattedLabels = labels.map(d => {
-const [y, m, d2] = d.split("-");
-return `${m}/${d2}/`;
-});
+const salesData = labels.map(d => timeline[d].sales || 0);
+const revenueData = labels.map(d => timeline[d].revenue || 0);
 
 const chart = new Chart(ctx, {
-type: "line",
+type: 'line',
 data: {
-labels: formattedLabels,
+labels: labels,
 datasets: [
 {
-label: "Sales",
+label: 'Sales',
 data: salesData,
-borderColor: "#2196F3",
-backgroundColor: "rgba(33,150,243,0.1)",
+borderColor: '#2196F3',
+backgroundColor: 'rgba(33,150,243,0.1)',
 tension: 0.3
 },
 {
-label: "Revenue",
+label: 'Revenue',
 data: revenueData,
-borderColor: "#FF9800",
-backgroundColor: "rgba(255,152,0,0.1)",
+borderColor: '#FF9800',
+backgroundColor: 'rgba(255,152,0,0.1)',
 tension: 0.3
 }
 ]
@@ -160,10 +158,55 @@ responsive: true,
 plugins: { legend: { position: 'top' }},
 scales: {
 y: { beginAtZero: true },
-x: { ticks: { autoSkip: true, maxRotation: 45, minRotation: 45 } }
+x: { ticks: { autoSkip: true } }
 }
 }
 });
+charts.push(chart);
+}
+
+function renderMonthlyBarChart(timeline) {
+const ctx = document.getElementById("monthlyBarChart").getContext("2d");
+const monthlyMap = {};
+
+Object.entries(timeline).forEach(([key, data]) => {
+const [mm] = key.split("/");
+const month = mm;
+if (!monthlyMap[month]) monthlyMap[month] = { sales: 0, purchases: 0 };
+monthlyMap[month].sales += data.sales || 0;
+monthlyMap[month].purchases += data.purchases || 0;
+});
+
+const months = Object.keys(monthlyMap).sort();
+const sales = months.map(m => monthlyMap[m].sales || 0);
+const purchases = months.map(m => monthlyMap[m].purchases || 0);
+
+const chart = new Chart(ctx, {
+type: 'bar',
+data: {
+labels: months,
+datasets: [
+{
+label: "Total Sales",
+data: sales,
+backgroundColor: "#42a5f5"
+},
+{
+label: "Total Purchases",
+data: purchases,
+backgroundColor: "#66bb6a"
+}
+]
+},
+options: {
+responsive: true,
+plugins: { legend: { position: 'top' }},
+scales: {
+y: { beginAtZero: true }
+}
+}
+});
+
 charts.push(chart);
 }
 
@@ -189,6 +232,8 @@ window.onload = loadDashboard;
 </script>
 </body>
 </html>
+
+
 
 
 
