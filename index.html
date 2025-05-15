@@ -1,245 +1,293 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Sales Dashboard</title>
+<meta charset="UTF-8">
+<title>Inventory Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body, html {
+body {
 margin: 0;
 font-family: Arial, sans-serif;
-height: 100vh;
-display: flex;
-flex-direction: column;
 }
-#filters {
-display: flex;
-gap: 20px;
-padding: 10px;
-flex-wrap: wrap;
-}
-.kpi-boxes {
+
+.kpi-container {
 display: flex;
 justify-content: space-around;
+align-items: center;
 height: 10vh;
+background: #f0f0f0;
 }
-.kpi {
-flex: 1;
+
+.kpi-box {
+background: white;
+border: 1px solid #ccc;
+padding: 10px;
 text-align: center;
-background: #f2f2f2;
-margin: 5px;
-padding: 10px;
-border-radius: 5px;
+width: 30%;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-#charts, #tables {
+
+.filters {
 display: flex;
-height: 40vh;
+justify-content: space-between;
+align-items: center;
 padding: 10px;
-box-sizing: border-box;
+background: #fafafa;
+border-bottom: 1px solid #ddd;
+flex-wrap: wrap;
 }
-.chart-container, .table-container {
-flex: 1;
-padding: 10px;
-}
-.table-container {
-overflow-y: auto;
-}
+
 .dropdown {
 position: relative;
+width: 250px;
 }
-.dropdown-toggle {
-padding: 8px;
+
+.dropdown-btn {
 border: 1px solid #ccc;
-cursor: pointer;
+padding: 8px;
 background: white;
+cursor: pointer;
 }
-.dropdown-menu {
+
+.dropdown-content {
 display: none;
 position: absolute;
 background: white;
 border: 1px solid #ccc;
 max-height: 200px;
 overflow-y: auto;
-width: 250px;
-z-index: 1000;
+z-index: 10;
+width: 100%;
 }
-.dropdown.show .dropdown-menu {
+
+.dropdown-content input[type="text"] {
+width: 95%;
+margin: 5px;
+padding: 5px;
+}
+
+.dropdown-content label {
 display: block;
-}
-.tag-summary {
-display: inline-block;
-background: #e2e2e2;
 padding: 4px 8px;
-margin: 2px;
-border-radius: 4px;
+}
+
+.chart-container {
+display: flex;
+height: 40vh;
+}
+
+.chart-box {
+width: 50%;
+padding: 10px;
+}
+
+.table-container {
+display: flex;
+height: 40vh;
+overflow-x: auto;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+min-width: 300px;
+background: white;
+}
+
+th, td {
+border: 1px solid #ccc;
+padding: 6px;
+text-align: left;
+}
+
+th {
+background: #f8f8f8;
+}
+
+.table-box {
+flex: 1;
+overflow-y: auto;
+padding: 10px;
+}
+
+@media (max-width: 768px) {
+.chart-container, .table-container {
+flex-direction: column;
+height: auto;
+}
+.chart-box, .table-box {
+width: 100%;
+}
 }
 </style>
 </head>
 <body>
 
-<div id="filters">
-<label>
-Start Date:
-<input type="date" id="startDate">
-</label>
-<label>
-End Date:
-<input type="date" id="endDate">
-</label>
+<div class="kpi-container">
+<div class="kpi-box" id="salesBox">Sales: $0.00</div>
+<div class="kpi-box" id="purchasesBox">Purchases: $0.00</div>
+<div class="kpi-box" id="revenueBox">Revenue: $0.00</div>
+</div>
+
+<div class="filters">
+<div>
+Start Date: <input type="date" id="startDate">
+End Date: <input type="date" id="endDate">
+</div>
 <div class="dropdown" id="supplierDropdown">
-<div class="dropdown-toggle" onclick="toggleDropdown()">Select Suppliers</div>
-<div class="dropdown-menu">
-<input type="text" placeholder="Search..." onkeyup="filterDropdown(this)">
-<label><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"> Select All</label>
-<div id="supplierList"></div>
+<div class="dropdown-btn" onclick="toggleDropdown()">Select Suppliers</div>
+<div class="dropdown-content" id="supplierList">
+<input type="text" placeholder="Search..." onkeyup="filterSuppliers(this)">
 </div>
 </div>
-<div id="supplierTags"></div>
-<button onclick="fetchData()">Apply</button>
 </div>
 
-<div class="kpi-boxes">
-<div class="kpi"><h3 id="kpiSales">0</h3><p>Total Sales</p></div>
-<div class="kpi"><h3 id="kpiPurchases">0</h3><p>Total Purchases</p></div>
-<div class="kpi"><h3 id="kpiRevenue">0</h3><p>Total Revenue</p></div>
+<div class="chart-container">
+<div class="chart-box">
+<canvas id="timelineChart"></canvas>
+</div>
+<div class="chart-box">
+<canvas id="monthlyChart"></canvas>
+</div>
 </div>
 
-<div id="charts">
-<div class="chart-container"><canvas id="monthlyChart"></canvas></div>
-<div class="chart-container"><canvas id="timelineChart"></canvas></div>
-</div>
-
-<div id="tables">
 <div class="table-container">
-<h4>Top 10 Items by Quantity Sold</h4>
-<table id="topSalesTable"></table>
+<div class="table-box">
+<h3>Top 10 by Quantity Sold</h3>
+<table id="topSalesTable"><thead></thead><tbody></tbody></table>
 </div>
-<div class="table-container">
-<h4>Top 10 Items by Revenue</h4>
-<table id="topRevenueTable"></table>
+<div class="table-box">
+<h3>Top 10 by Revenue</h3>
+<table id="topRevenueTable"><thead></thead><tbody></tbody></table>
 </div>
-<div class="table-container">
-<h4>Revenue by Supplier</h4>
-<table id="supplierTable"></table>
+<div class="table-box">
+<h3>Revenue by Supplier</h3>
+<table id="revenueBySupplierTable"><thead></thead><tbody></tbody></table>
 </div>
 </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec';
-
-let monthlyChart, timelineChart;
+const scriptURL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your Web App URL
+let supplierOptions = [];
 
 function toggleDropdown() {
-document.getElementById("supplierDropdown").classList.toggle("show");
+const content = document.getElementById("supplierList");
+content.style.display = content.style.display === "block" ? "none" : "block";
 }
 
-function filterDropdown(input) {
-const filter = input.value.toLowerCase();
-const checkboxes = document.getElementById("supplierList").children;
-Array.from(checkboxes).forEach(label => {
-label.style.display = label.textContent.toLowerCase().includes(filter) ? "block" : "none";
+document.addEventListener("click", function(event) {
+if (!event.target.closest("#supplierDropdown")) {
+document.getElementById("supplierList").style.display = "none";
+}
 });
-}
-
-function toggleSelectAll(box) {
-const checkboxes = document.querySelectorAll("#supplierList input[type='checkbox']");
-checkboxes.forEach(cb => cb.checked = box.checked);
-updateTags();
-}
-
-function updateTags() {
-const selected = Array.from(document.querySelectorAll("#supplierList input[type='checkbox']:checked"))
-.map(cb => cb.value);
-const tagContainer = document.getElementById("supplierTags");
-tagContainer.innerHTML = selected.map(s => `<span class="tag-summary">${s}</span>`).join("");
-}
-
-function closeDropdowns(e) {
-if (!document.getElementById("supplierDropdown").contains(e.target)) {
-document.getElementById("supplierDropdown").classList.remove("show");
-}
-}
-document.addEventListener("click", closeDropdowns);
 
 function fetchData() {
-const start = document.getElementById("startDate").value;
-const end = document.getElementById("endDate").value;
-const selected = Array.from(document.querySelectorAll("#supplierList input[type='checkbox']:checked"))
-.map(cb => cb.value).join(",");
+const startDate = document.getElementById("startDate").value;
+const endDate = document.getElementById("endDate").value;
+const selectedSuppliers = [...document.querySelectorAll('#supplierList input[type="checkbox"]:checked')]
+.filter(el => el.value !== 'all')
+.map(el => el.value)
+.join(",");
 
-fetch(`${SHEET_URL}?startDate=${start}&endDate=${end}&supplier=${selected}`)
+const url = `${scriptURL}?startDate=${startDate}&endDate=${endDate}&supplier=${selectedSuppliers}`;
+fetch(url)
 .then(res => res.json())
-.then(updateDashboard);
+.then(renderData);
 }
 
-function updateDashboard(data) {
-document.getElementById("kpiSales").textContent = data.totals.sales;
-document.getElementById("kpiPurchases").textContent = data.totals.purchases;
-document.getElementById("kpiRevenue").textContent = data.totals.revenue;
+function renderData(data) {
+document.getElementById("salesBox").innerText = `Sales: $${data.totals.sales}`;
+document.getElementById("purchasesBox").innerText = `Purchases: $${data.totals.purchases}`;
+document.getElementById("revenueBox").innerText = `Revenue: $${data.totals.revenue}`;
 
-// Monthly Chart
-const months = Object.keys(data.monthly);
-const sales = months.map(m => data.monthly[m].sales);
-const purchases = months.map(m => data.monthly[m].purchases);
-if (monthlyChart) monthlyChart.destroy();
-monthlyChart = new Chart(document.getElementById("monthlyChart"), {
-type: 'bar',
+updateChart("timelineChart", "Sales vs Revenue", data.timeline, ['sales', 'revenue'], 'bar');
+updateChart("monthlyChart", "Monthly Sales vs Purchases", data.monthly, ['sales', 'purchases'], 'bar');
+
+updateTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
+updateTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
+updateTable("revenueBySupplierTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
+
+if (!supplierOptions.length) renderSupplierDropdown(data.allSuppliers);
+}
+
+function updateChart(id, label, dataset, keys, type) {
+const ctx = document.getElementById(id).getContext("2d");
+const labels = Object.keys(dataset);
+const dataSets = keys.map((k, i) => ({
+label: k.charAt(0).toUpperCase() + k.slice(1),
+backgroundColor: i === 0 ? "#4CAF50" : "#2196F3",
+data: labels.map(d => dataset[d][k] || 0)
+}));
+
+if (window[id]) window[id].destroy();
+window[id] = new Chart(ctx, {
+type,
 data: {
-labels: months,
-datasets: [
-{ label: 'Sales', data: sales, backgroundColor: 'steelblue' },
-{ label: 'Purchases', data: purchases, backgroundColor: 'orange' }
-]
+labels,
+datasets: dataSets
 },
-options: { responsive: true, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
-});
-
-// Timeline Chart
-const days = Object.keys(data.timeline);
-const timelineSales = days.map(d => data.timeline[d].sales);
-const timelineRevenue = days.map(d => data.timeline[d].revenue);
-if (timelineChart) timelineChart.destroy();
-timelineChart = new Chart(document.getElementById("timelineChart"), {
-type: 'line',
-data: {
-labels: days,
-datasets: [
-{ label: 'Sales', data: timelineSales, borderColor: 'green', fill: false },
-{ label: 'Revenue', data: timelineRevenue, borderColor: 'purple', fill: false }
-]
+options: {
+responsive: true,
+plugins: {
+legend: { position: 'top' },
+title: { display: true, text: label }
+}
 }
 });
-
-buildTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
-buildTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-buildTable("supplierTable", data.revenueBySupplier, ["supplier", "sales", "purchases", "revenue"]);
 }
 
-function buildTable(id, data, columns) {
+function updateTable(id, data, columns) {
 const table = document.getElementById(id);
-table.innerHTML = "<tr>" + columns.map(h => `<th>${h}</th>`).join("") + "</tr>" +
-data.map(row => "<tr>" + columns.map(c => `<td>${row[c]}</td>`).join("") + "</tr>").join("");
+const thead = table.querySelector("thead");
+const tbody = table.querySelector("tbody");
+thead.innerHTML = "<tr>" + columns.map(c => `<th>${c}</th>`).join("") + "</tr>";
+tbody.innerHTML = data.map(row =>
+"<tr>" + columns.map(c => `<td>${row[c]}</td>`).join("") + "</tr>"
+).join("");
 }
 
-function loadSuppliers() {
-fetch(SHEET_URL).then(res => res.json()).then(data => {
-const container = document.getElementById("supplierList");
-container.innerHTML = "";
-data.allSuppliers.forEach(s => {
-const label = document.createElement("label");
-label.innerHTML = `<input type="checkbox" value="${s}" onchange="updateTags()"> ${s}`;
-container.appendChild(label);
-});
+function renderSupplierDropdown(suppliers) {
+supplierOptions = suppliers;
+const list = document.getElementById("supplierList");
+list.innerHTML += `<input type="text" placeholder="Search..." onkeyup="filterSuppliers(this)">`;
+list.innerHTML += `<label><input type="checkbox" id="selectAll" checked onchange="toggleAll(this)"> Select All</label>`;
+suppliers.forEach(supplier => {
+list.innerHTML += `<label><input type="checkbox" value="${supplier}" checked> ${supplier}</label>`;
 });
 }
 
-loadSuppliers();
+function toggleAll(source) {
+document.querySelectorAll('#supplierList input[type="checkbox"]').forEach(checkbox => {
+if (checkbox !== source) checkbox.checked = source.checked;
+});
+fetchData();
+}
+
+function filterSuppliers(input) {
+const filter = input.value.toLowerCase();
+const labels = document.querySelectorAll('#supplierList label');
+labels.forEach(label => {
+if (label.innerText.toLowerCase().includes(filter)) {
+label.style.display = '';
+} else {
+label.style.display = 'none';
+}
+});
+}
+
+document.getElementById("startDate").addEventListener("change", fetchData);
+document.getElementById("endDate").addEventListener("change", fetchData);
+document.getElementById("supplierList").addEventListener("change", fetchData);
+
+window.onload = () => {
+const today = new Date().toISOString().split('T')[0];
+document.getElementById("startDate").value = today;
+document.getElementById("endDate").value = today;
+fetchData();
+};
 </script>
 </body>
 </html>
-
-
-
-
 
 
 
