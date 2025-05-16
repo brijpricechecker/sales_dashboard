@@ -122,7 +122,7 @@
   </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your actual Script URL
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your actual Web App URL
 
 let barChart, lineChart;
 
@@ -143,18 +143,10 @@ function fetchData() {
   const checkboxes = document.querySelectorAll('#supplierDropdown input[type="checkbox"]:checked');
   const suppliers = Array.from(checkboxes).map(cb => cb.value);
 
-  const params = new URLSearchParams();
-  if (startDate) params.append('startDate', startDate);
-  if (endDate) params.append('endDate', endDate);
-  if (suppliers.length > 0) params.append('supplier', suppliers.join(','));
-
-  const url = `${SHEET_URL}?${params.toString()}`;
+  const url = `${SHEET_URL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(suppliers.join(','))}`;
 
   fetch(url)
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
       updateKPIs(data.totals);
       renderBarChart(data.monthly);
@@ -165,15 +157,14 @@ function fetchData() {
       populateSupplierDropdown(data.allSuppliers);
     })
     .catch(err => {
-      alert("Error fetching data: " + err.message);
-      console.error(err);
+      alert("Error fetching data: " + err);
     });
 }
 
 function updateKPIs(totals) {
-  document.getElementById('totalSales').textContent = `Total Sales: ${totals.sales}`;
-  document.getElementById('totalPurchases').textContent = `Total Purchases: ${totals.purchases}`;
-  document.getElementById('totalRevenue').textContent = `Total Revenue: ${totals.revenue}`;
+  document.getElementById('totalSales').textContent = `Total Sales: ${totals.sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  document.getElementById('totalPurchases').textContent = `Total Purchases: ${totals.purchases.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  document.getElementById('totalRevenue').textContent = `Total Revenue: ${totals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 }
 
 function renderBarChart(data) {
@@ -186,7 +177,7 @@ function renderBarChart(data) {
   barChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short' })),
+      labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short', year: 'numeric' })),
       datasets: [
         { label: 'Sales', data: sales, backgroundColor: '#4caf50' },
         { label: 'Purchases', data: purchases, backgroundColor: '#e91e63' }
@@ -212,7 +203,7 @@ function renderLineChart(data) {
   lineChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels.map(k => k.slice(5)),
+      labels: labels,
       datasets: [
         { label: 'Sales', data: sales, borderColor: '#2196f3', fill: false },
         { label: 'Revenue', data: revenue, borderColor: '#f44336', fill: false }
@@ -254,8 +245,9 @@ function toggleAll(mainCheckbox) {
   });
 }
 
-// Automatically fetch initial data on load
+// Load data initially
 window.onload = fetchData;
 </script>
 </body>
 </html>
+
