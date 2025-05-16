@@ -143,10 +143,18 @@ function fetchData() {
   const checkboxes = document.querySelectorAll('#supplierDropdown input[type="checkbox"]:checked');
   const suppliers = Array.from(checkboxes).map(cb => cb.value);
 
-  const url = `${SHEET_URL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(suppliers.join(','))}`;
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  if (suppliers.length > 0) params.append('supplier', suppliers.join(','));
+
+  const url = `${SHEET_URL}?${params.toString()}`;
 
   fetch(url)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(data => {
       updateKPIs(data.totals);
       renderBarChart(data.monthly);
@@ -157,7 +165,8 @@ function fetchData() {
       populateSupplierDropdown(data.allSuppliers);
     })
     .catch(err => {
-      alert("Error fetching data: " + err);
+      alert("Error fetching data: " + err.message);
+      console.error(err);
     });
 }
 
@@ -250,27 +259,3 @@ window.onload = fetchData;
 </script>
 </body>
 </html>
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
