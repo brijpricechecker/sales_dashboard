@@ -85,7 +85,7 @@
       const selectedSuppliers = Array.from(supplierSelect.selectedOptions).map(o => o.value);
 
       const query = `?startDate=${startDate}&endDate=${endDate}&supplier=${selectedSuppliers.join(',')}`;
-      const url = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec' + query;
+      const url = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec' + query; // Replace with your actual Web App URL
 
       const res = await fetch(url);
       const data = await res.json();
@@ -111,7 +111,7 @@
         data: {
           labels,
           datasets: [
-            { label: 'Sales', data, data: sales, backgroundColor: 'skyblue' },
+            { label: 'Sales', data: sales, backgroundColor: 'skyblue' },
             { label: 'Revenue', data: revenue, backgroundColor: 'lightgreen' }
           ]
         }
@@ -124,7 +124,11 @@
         type: 'pie',
         data: {
           labels: supplierLabels,
-          datasets: [{ label: 'Revenue by Supplier', data: supplierRevenue, backgroundColor: generateColors(supplierLabels.length) }]
+          datasets: [{
+            label: 'Revenue by Supplier',
+            data: supplierRevenue,
+            backgroundColor: generateColors(supplierLabels.length)
+          }]
         }
       });
     }
@@ -153,6 +157,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
