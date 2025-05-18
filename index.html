@@ -4,178 +4,175 @@
   <title>Inventory Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { margin-bottom: 10px; }
-    .filters, .metrics, .charts, .top-items { margin-bottom: 20px; }
-    label { margin-right: 10px; }
-    canvas { max-width: 100%; }
-    .supplier-checkboxes { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; width: 250px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .chart-row {
+      display: flex;
+      justify-content: space-between;
+      height: 40vh;
+    }
+    .chart-container {
+      width: 48%;
+      height: 100%;
+    }
+    .table-row {
+      display: flex;
+      justify-content: space-between;
+      height: 40vh;
+      margin-top: 20px;
+    }
+    .table-container {
+      width: 48%;
+      height: 100%;
+      overflow: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
   </style>
 </head>
 <body>
-  <h1>Inventory Dashboard</h1>
-
-  <div class="filters">
-    <label>Start Date: <input type="date" id="startDate"></label>
-    <label>End Date: <input type="date" id="endDate"></label>
+  <h2>Inventory Dashboard</h2>
+  <div class="controls">
     <div>
-      <label>Suppliers:</label>
-      <div id="supplierCheckboxes" class="supplier-checkboxes"></div>
+      Start Date: <input type="date" id="startDate">
+      End Date: <input type="date" id="endDate">
+      <button onclick="loadData()">Apply</button>
     </div>
-    <button onclick="loadData()">Apply Filters</button>
+    <div id="supplierFilters"></div>
   </div>
 
-  <div class="metrics">
-    <h2>Summary</h2>
-    <p>Sales: ₱<span id="sales"></span></p>
-    <p>Purchases: ₱<span id="purchases"></span></p>
-    <p>Revenue: ₱<span id="revenue"></span></p>
+  <div class="chart-row">
+    <div class="chart-container">
+      <canvas id="salesChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="supplierChart"></canvas>
+    </div>
   </div>
 
-  <div class="charts">
-    <h2>Timeline</h2>
-    <canvas id="lineChart"></canvas>
-
-    <h2>Monthly Sales vs Purchases</h2>
-    <canvas id="barChart"></canvas>
-
-    <h2>Revenue by Supplier</h2>
-    <canvas id="pieChart"></canvas>
-  </div>
-
-  <div class="top-items">
-    <h2>Top 10 Items by Sales</h2>
-    <ul id="topSalesList"></ul>
-
-    <h2>Top 10 Items by Revenue</h2>
-    <ul id="topRevenueList"></ul>
+  <div class="table-row">
+    <div class="table-container">
+      <h4>Top Sales</h4>
+      <table id="topSalesTable">
+        <thead><tr><th>Item</th><th>Qty</th><th>Sales</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="table-container">
+      <h4>Top Revenue</h4>
+      <table id="topRevenueTable">
+        <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
-    let lineChart, barChart, pieChart;
+    const API_URL = 'https://script.google.com/macros/s/AKfycbw3YkdkoUVhTdu2TohzA7ZPQhsx3Jd-fN5x-QpD8wQBGzuPqTFW8nKhQyFfQ9dRD1K9/exec';
 
     async function loadData() {
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
-      const supplierCheckboxes = document.querySelectorAll('#supplierCheckboxes input[type="checkbox"]:checked');
-      const suppliers = Array.from(supplierCheckboxes).map(cb => cb.value).join(',');
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
 
-      const query = `?startDate=${startDate}&endDate=${endDate}&supplier=${suppliers}`;
-      const response = await fetch('https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec' + query);
-      const data = await response.json();
+      const checked = [...document.querySelectorAll('input[name="supplier"]:checked')].map(cb => cb.value);
+      const supplierParam = checked.join(',');
 
-      document.getElementById('sales').textContent = data.totals.sales;
-      document.getElementById('purchases').textContent = data.totals.purchases;
-      document.getElementById('revenue').textContent = data.totals.revenue;
+      const res = await fetch(`${API_URL}?startDate=${start}&endDate=${end}&supplier=${supplierParam}`);
+      const data = await res.json();
 
-      renderLineChart(data.timeline);
-      renderBarChart(data.monthly);
-      renderPieChart(data.revenueBySupplier);
-      renderTopItems('topSalesList', data.topSales, 'quantity');
-      renderTopItems('topRevenueList', data.topRevenue, 'revenue');
-      renderSupplierCheckboxes(data.allSuppliers);
+      renderCharts(data.timeline, data.revenueBySupplier);
+      renderTables(data.topSales, data.topRevenue);
+      renderSuppliers(data.allSuppliers);
     }
 
-    function renderLineChart(data) {
-      const labels = Object.keys(data).sort((a, b) => new Date(a) - new Date(b));
-      const sales = labels.map(k => data[k].sales);
-      const revenue = labels.map(k => data[k].revenue);
+    function renderSuppliers(suppliers) {
+      const container = document.getElementById("supplierFilters");
+      container.innerHTML = suppliers.map(s =>
+        `<label><input type="checkbox" name="supplier" value="${s}" checked> ${s}</label>`
+      ).join(" ");
+    }
 
-      const ctx = document.getElementById('lineChart').getContext('2d');
-      if (lineChart) lineChart.destroy();
-      lineChart = new Chart(ctx, {
+    function renderCharts(timeline, supplierData) {
+      const dates = Object.keys(timeline).sort();
+      const sales = dates.map(d => timeline[d].sales);
+      const revenues = dates.map(d => timeline[d].revenue);
+
+      new Chart(document.getElementById("salesChart").getContext("2d"), {
         type: 'line',
         data: {
-          labels: labels.map(date => new Date(date).toLocaleDateString('default', { month: 'short', day: 'numeric' })),
+          labels: dates,
           datasets: [
-            { label: 'Sales', data: sales, borderColor: '#2196f3', fill: false },
-            { label: 'Revenue', data: revenue, borderColor: '#f44336', fill: false }
+            { label: 'Sales', data: sales, borderColor: 'blue', fill: false },
+            { label: 'Revenue', data: revenues, borderColor: 'green', fill: false }
           ]
         },
         options: {
           responsive: true,
-          scales: {
-            y: { beginAtZero: true },
-            x: { ticks: { autoSkip: true, maxTicksLimit: 15 } }
-          }
+          maintainAspectRatio: false
         }
       });
-    }
 
-    function renderBarChart(data) {
-      const labels = Object.keys(data).sort(); // Assumes 'YYYY-MM' format
-      const sales = labels.map(k => data[k].sales);
-      const purchases = labels.map(k => data[k].purchases);
+      const supplierNames = supplierData.map(s => s.supplier);
+      const supplierRevenue = supplierData.map(s => s.revenue);
 
-      const ctx = document.getElementById('barChart').getContext('2d');
-      if (barChart) barChart.destroy();
-      barChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            { label: 'Sales', data: sales, backgroundColor: '#4caf50' },
-            { label: 'Purchases', data: purchases, backgroundColor: '#ff9800' }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
-    }
-
-    function renderPieChart(data) {
-      const labels = data.map(d => d.supplier);
-      const revenues = data.map(d => d.revenue);
-
-      const ctx = document.getElementById('pieChart').getContext('2d');
-      if (pieChart) pieChart.destroy();
-      pieChart = new Chart(ctx, {
+      new Chart(document.getElementById("supplierChart").getContext("2d"), {
         type: 'pie',
         data: {
-          labels,
+          labels: supplierNames,
           datasets: [{
-            data: revenues,
-            backgroundColor: labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 60%)`)
+            data: supplierRevenue,
+            backgroundColor: supplierNames.map((_, i) => `hsl(${i * 40 % 360}, 70%, 60%)`)
           }]
         },
-        options: { responsive: true }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
       });
     }
 
-    function renderTopItems(containerId, items, valueKey) {
-      const list = document.getElementById(containerId);
-      list.innerHTML = '';
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item.name} - ${item[valueKey]}`;
-        list.appendChild(li);
-      });
+    function renderTables(topSales, topRevenue) {
+      const salesTable = document.querySelector("#topSalesTable tbody");
+      const revTable = document.querySelector("#topRevenueTable tbody");
+
+      salesTable.innerHTML = topSales.map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>${i.sales}</td></tr>`).join("");
+      revTable.innerHTML = topRevenue.map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>${i.revenue}</td></tr>`).join("");
     }
 
-    function renderSupplierCheckboxes(suppliers) {
-      const container = document.getElementById('supplierCheckboxes');
-      const selected = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
-      container.innerHTML = '';
-      suppliers.forEach(supplier => {
-        const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = supplier;
-        if (selected.includes(supplier)) checkbox.checked = true;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(supplier));
-        container.appendChild(label);
-        container.appendChild(document.createElement('br'));
-      });
-    }
+    // Auto load with default dates
+    window.onload = () => {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    window.onload = loadData;
+      document.getElementById("startDate").value = firstDay;
+      document.getElementById("endDate").value = lastDay;
+
+      loadData();
+    };
   </script>
 </body>
 </html>
+
 
 
