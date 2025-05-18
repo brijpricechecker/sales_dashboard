@@ -122,7 +122,7 @@
   </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your actual Web App URL
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec'; // Replace with your actual Script URL
 
 let barChart, lineChart;
 
@@ -162,9 +162,9 @@ function fetchData() {
 }
 
 function updateKPIs(totals) {
-  document.getElementById('totalSales').textContent = `Total Sales: ${totals.sales.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-  document.getElementById('totalPurchases').textContent = `Total Purchases: ${totals.purchases.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-  document.getElementById('totalRevenue').textContent = `Total Revenue: ${totals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  document.getElementById('totalSales').textContent = `Total Sales: ${totals.sales}`;
+  document.getElementById('totalPurchases').textContent = `Total Purchases: ${totals.purchases}`;
+  document.getElementById('totalRevenue').textContent = `Total Revenue: ${totals.revenue}`;
 }
 
 function renderBarChart(data) {
@@ -177,7 +177,7 @@ function renderBarChart(data) {
   barChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short', year: 'numeric' })),
+      labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short' })),
       datasets: [
         { label: 'Sales', data: sales, backgroundColor: '#4caf50' },
         { label: 'Purchases', data: purchases, backgroundColor: '#e91e63' }
@@ -203,7 +203,7 @@ function renderLineChart(data) {
   lineChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels,
+      labels: labels.map(k => k.slice(5)),
       datasets: [
         { label: 'Sales', data: sales, borderColor: '#2196f3', fill: false },
         { label: 'Revenue', data: revenue, borderColor: '#f44336', fill: false }
@@ -245,9 +245,10 @@ function toggleAll(mainCheckbox) {
   });
 }
 
-// Load data initially
+// Automatically fetch initial data on load
 window.onload = fetchData;
 </script>
 </body>
 </html>
+
 
