@@ -6,170 +6,150 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 10px;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     .controls {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
+      padding: 10px;
+      background: #f4f4f4;
     }
-    .chart-row {
+    .dashboard {
       display: flex;
-      justify-content: space-between;
-      height: 40vh;
+      flex-wrap: wrap;
+      flex: 1;
+      overflow: hidden;
     }
     .chart-container {
-      width: 48%;
-      height: 100%;
-    }
-    .table-row {
-      display: flex;
-      justify-content: space-between;
-      height: 40vh;
-      margin-top: 20px;
+      flex: 1 1 50%;
+      height: 40%;
+      box-sizing: border-box;
+      padding: 10px;
     }
     .table-container {
-      width: 48%;
-      height: 100%;
-      overflow: auto;
-      border: 1px solid #ccc;
-      padding: 5px;
+      flex: 1 1 50%;
+      height: 40%;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 4px;
+      border: 1px solid #ddd;
+      padding: 8px;
       text-align: left;
     }
     th {
-      background-color: #f0f0f0;
+      background-color: #f2f2f2;
     }
   </style>
 </head>
 <body>
-  <h2>Inventory Dashboard</h2>
   <div class="controls">
-    <div>
-      Start Date: <input type="date" id="startDate">
-      End Date: <input type="date" id="endDate">
-      <button onclick="loadData()">Apply</button>
-    </div>
-    <div id="supplierFilters"></div>
+    Start Date: <input type="date" id="startDate">
+    End Date: <input type="date" id="endDate">
+    Suppliers: <select id="supplierFilter" multiple></select>
+    <button onclick="loadData()">Apply Filters</button>
   </div>
-
-  <div class="chart-row">
+  <div class="dashboard">
     <div class="chart-container">
       <canvas id="salesChart"></canvas>
     </div>
     <div class="chart-container">
-      <canvas id="supplierChart"></canvas>
-    </div>
-  </div>
-
-  <div class="table-row">
-    <div class="table-container">
-      <h4>Top Sales</h4>
-      <table id="topSalesTable">
-        <thead><tr><th>Item</th><th>Qty</th><th>Sales</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <canvas id="revenueBySupplierChart"></canvas>
     </div>
     <div class="table-container">
-      <h4>Top Revenue</h4>
-      <table id="topRevenueTable">
-        <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <h3>Top Sales</h3>
+      <table id="topSalesTable"></table>
+    </div>
+    <div class="table-container">
+      <h3>Top Revenue</h3>
+      <table id="topRevenueTable"></table>
     </div>
   </div>
 
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbw3YkdkoUVhTdu2TohzA7ZPQhsx3Jd-fN5x-QpD8wQBGzuPqTFW8nKhQyFfQ9dRD1K9/exec';
-
     async function loadData() {
-      const start = document.getElementById("startDate").value;
-      const end = document.getElementById("endDate").value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const supplierSelect = document.getElementById('supplierFilter');
+      const selectedSuppliers = Array.from(supplierSelect.selectedOptions).map(o => o.value);
 
-      const checked = [...document.querySelectorAll('input[name="supplier"]:checked')].map(cb => cb.value);
-      const supplierParam = checked.join(',');
+      const query = `?startDate=${startDate}&endDate=${endDate}&supplier=${selectedSuppliers.join(',')}`;
+      const url = 'https://script.google.com/macros/s/AKfycbyNhFl8nWDfs7LQLWhhbV9-KUdENX-9aqT8W_jr4-zNEjBqeIKXwU9hWRuoTXaiHmJ8/exec' + query;
 
-      const res = await fetch(`${API_URL}?startDate=${start}&endDate=${end}&supplier=${supplierParam}`);
+      const res = await fetch(url);
       const data = await res.json();
 
-      renderCharts(data.timeline, data.revenueBySupplier);
-      renderTables(data.topSales, data.topRevenue);
-      renderSuppliers(data.allSuppliers);
+      updateCharts(data);
+      updateTables(data);
+      updateSupplierOptions(data.allSuppliers, selectedSuppliers);
     }
 
-    function renderSuppliers(suppliers) {
-      const container = document.getElementById("supplierFilters");
-      container.innerHTML = suppliers.map(s =>
-        `<label><input type="checkbox" name="supplier" value="${s}" checked> ${s}</label>`
-      ).join(" ");
-    }
+    function updateCharts(data) {
+      const salesCtx = document.getElementById('salesChart').getContext('2d');
+      const revenueCtx = document.getElementById('revenueBySupplierChart').getContext('2d');
 
-    function renderCharts(timeline, supplierData) {
-      const dates = Object.keys(timeline).sort();
-      const sales = dates.map(d => timeline[d].sales);
-      const revenues = dates.map(d => timeline[d].revenue);
+      if (window.salesChart) window.salesChart.destroy();
+      if (window.revenueChart) window.revenueChart.destroy();
 
-      new Chart(document.getElementById("salesChart").getContext("2d"), {
-        type: 'line',
+      const labels = Object.keys(data.timeline);
+      const sales = labels.map(l => data.timeline[l].sales);
+      const revenue = labels.map(l => data.timeline[l].revenue);
+
+      window.salesChart = new Chart(salesCtx, {
+        type: 'bar',
         data: {
-          labels: dates,
+          labels,
           datasets: [
-            { label: 'Sales', data: sales, borderColor: 'blue', fill: false },
-            { label: 'Revenue', data: revenues, borderColor: 'green', fill: false }
+            { label: 'Sales', data, data: sales, backgroundColor: 'skyblue' },
+            { label: 'Revenue', data: revenue, backgroundColor: 'lightgreen' }
           ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
         }
       });
 
-      const supplierNames = supplierData.map(s => s.supplier);
-      const supplierRevenue = supplierData.map(s => s.revenue);
+      const supplierLabels = data.revenueBySupplier.map(r => r.supplier);
+      const supplierRevenue = data.revenueBySupplier.map(r => r.revenue);
 
-      new Chart(document.getElementById("supplierChart").getContext("2d"), {
+      window.revenueChart = new Chart(revenueCtx, {
         type: 'pie',
         data: {
-          labels: supplierNames,
-          datasets: [{
-            data: supplierRevenue,
-            backgroundColor: supplierNames.map((_, i) => `hsl(${i * 40 % 360}, 70%, 60%)`)
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
+          labels: supplierLabels,
+          datasets: [{ label: 'Revenue by Supplier', data: supplierRevenue, backgroundColor: generateColors(supplierLabels.length) }]
         }
       });
     }
 
-    function renderTables(topSales, topRevenue) {
-      const salesTable = document.querySelector("#topSalesTable tbody");
-      const revTable = document.querySelector("#topRevenueTable tbody");
+    function updateTables(data) {
+      const topSalesTable = document.getElementById('topSalesTable');
+      const topRevenueTable = document.getElementById('topRevenueTable');
 
-      salesTable.innerHTML = topSales.map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>${i.sales}</td></tr>`).join("");
-      revTable.innerHTML = topRevenue.map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>${i.revenue}</td></tr>`).join("");
+      topSalesTable.innerHTML = '<tr><th>Item</th><th>Quantity</th><th>Sales</th></tr>' +
+        data.topSales.map(item => `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${item.sales}</td></tr>`).join('');
+
+      topRevenueTable.innerHTML = '<tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr>' +
+        data.topRevenue.map(item => `<tr><td>${item.name}</td><td>${item.quantity}</td><td>${item.revenue}</td></tr>`).join('');
     }
 
-    // Auto load with default dates
-    window.onload = () => {
-      const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+    function updateSupplierOptions(allSuppliers, selected) {
+      const select = document.getElementById('supplierFilter');
+      select.innerHTML = allSuppliers.map(s => `<option value="${s}" ${selected.includes(s) ? 'selected' : ''}>${s}</option>`).join('');
+    }
 
-      document.getElementById("startDate").value = firstDay;
-      document.getElementById("endDate").value = lastDay;
+    function generateColors(count) {
+      return Array.from({ length: count }, (_, i) => `hsl(${i * 360 / count}, 70%, 60%)`);
+    }
 
-      loadData();
-    };
+    window.onload = loadData;
   </script>
 </body>
 </html>
