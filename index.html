@@ -1,127 +1,108 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Inventory Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body, html {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px;
-  align-items: center;
-}
-.filters input[type="date"], .filters button {
-  padding: 5px;
-}
-.dropdown {
-  position: relative;
-  width: 250px;
-}
-.dropdown-btn {
-  border: 1px solid #ccc;
-  padding: 8px;
-  background: white;
-  cursor: pointer;
-}
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 10;
-  width: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: #bbb #f4f4f4;
-}
-.dropdown-content::-webkit-scrollbar {
-  width: 6px;
-}
-.dropdown-content::-webkit-scrollbar-thumb {
-  background-color: #bbb;
-  border-radius: 3px;
-}
-#supplierList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 5px;
-}
-#supplierList label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
-  cursor: pointer;
-}
-#supplierSearch {
-  width: 90%;
-  margin: 5px auto;
-  padding: 4px 6px;
-  display: block;
-  border: 1px solid #ccc;
-}
-.kpis {
-  display: flex;
-  justify-content: space-around;
-  height: 10vh;
-  padding: 10px;
-  background: #f4f4f4;
-}
-.kpi {
-  flex: 1;
-  text-align: center;
-  border: 1px solid #ccc;
-  margin: 0 5px;
-  padding: 10px;
-  background-color: #e9f5ff;
-  font-weight: bold;  
-}
-.charts {
-  display: flex;
-  height: 40vh;
-  padding: 10px;
-  gap: 10px;
-}
-canvas {
-  flex: 1;
-}
-.tables {
-  display: flex;
-  height: 40vh;
-  padding: 10px;
-  gap: 10px;
-}
-.table-container {
-  flex: 1;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  background-color: #f9f9f9;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-table, th, td {
-  border: 1px solid #aaa;
-}
-th, td {
-  padding: 6px;
-  text-align: left;
-}
-th {
-  background-color: #eee;
-}
-</style>
+  <title>Inventory Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+      align-items: center;
+    }
+    .filters input[type="date"], .filters button {
+      padding: 5px;
+    }
+    .dropdown {
+      position: relative;
+      width: 250px;
+    }
+    .dropdown-btn {
+      border: 1px solid #ccc;
+      padding: 8px;
+      background: white;
+      cursor: pointer;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      width: 100%;
+    }
+    .dropdown-content label {
+      display: block;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .dropdown-content input[type="text"] {
+      width: 90%;
+      margin: 5px;
+      padding: 5px;
+    }
+    .kpis {
+      display: flex;
+      justify-content: space-around;
+      height: 10vh;
+      padding: 10px;
+      background: #f4f4f4;
+    }
+    .kpi {
+      flex: 1;
+      text-align: center;
+      border: 1px solid #ccc;
+      margin: 0 5px;
+      padding: 10px;
+      background-color: #e9f5ff;
+      font-weight: bold;
+    }
+    .charts {
+      display: flex;
+      height: 40vh;
+      padding: 10px;
+      gap: 10px;
+    }
+    canvas {
+      flex: 1;
+    }
+    .tables {
+      display: flex;
+      height: 40vh;
+      padding: 10px;
+      gap: 10px;
+    }
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #aaa;
+    }
+    th, td {
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #eee;
+    }
+  </style>
 </head>
 <body>
 
@@ -174,7 +155,7 @@ th {
 </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace with your deployed Apps Script URL
 
 let barChart, lineChart;
 
@@ -191,10 +172,7 @@ document.addEventListener("click", function (e) {
 function renderSupplierDropdown(suppliers) {
   const supplierList = document.getElementById("supplierList");
   supplierList.innerHTML = '';
-
-  const selectAllHTML = `<label><input type="checkbox" id="selectAll" checked onchange="toggleAll(this)"> Select All</label>`;
-  supplierList.insertAdjacentHTML("beforeend", selectAllHTML);
-
+  supplierList.insertAdjacentHTML("beforeend", `<label><input type="checkbox" id="selectAll" checked onchange="toggleAll(this)"> Select All</label>`);
   suppliers.forEach(supplier => {
     const label = document.createElement("label");
     label.innerHTML = `<input type="checkbox" value="${supplier}" checked> ${supplier}`;
@@ -238,8 +216,8 @@ function fetchData() {
       document.getElementById("totalPurchases").textContent = data.totals.purchases;
       document.getElementById("totalRevenue").textContent = data.totals.revenue;
 
-      updateBarChart(data.monthly);
-      updateLineChart(data.timeline, start);
+      updateBarChart(data.monthly, start, end);
+      updateLineChart(data.timeline, start, end);
       renderTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
       renderTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
       renderTable("revenueBySupplierTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
@@ -247,17 +225,22 @@ function fetchData() {
     });
 }
 
-function updateBarChart(monthly) {
+function updateBarChart(monthly, start, end) {
   const labels = Object.keys(monthly).sort();
   const sales = labels.map(m => monthly[m].sales);
   const purchases = labels.map(m => monthly[m].purchases);
+  const showDay = isSameMonth(start, end) === true;
+  const displayLabels = labels.map(k => {
+    const d = new Date(k + '-01');
+    return d.toLocaleDateString('default', { month: 'short', ...(showDay ? { day: '2-digit' } : { year: 'numeric' }) });
+  });
 
   const ctx = document.getElementById('barChart').getContext('2d');
   if (barChart) barChart.destroy();
   barChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short'})),
+      labels: displayLabels,
       datasets: [
         { label: 'Sales', data: sales, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
         { label: 'Purchases', data: purchases, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
@@ -265,25 +248,27 @@ function updateBarChart(monthly) {
     },
     options: {
       responsive: true,
-      scales: {
-        x: { stacked: false },
-        y: { beginAtZero: true }
-      }
+      scales: { y: { beginAtZero: true } }
     }
   });
 }
 
-function updateLineChart(timeline, startDateStr) {
-  const labels = Object.keys(timeline).filter(d => !startDateStr || d >= startDateStr).sort();
+function updateLineChart(timeline, start, end) {
+  const labels = Object.keys(timeline).filter(d => !start || d >= start).sort();
   const sales = labels.map(d => timeline[d].sales);
   const revenue = labels.map(d => timeline[d].revenue);
+  const showDay = isSameMonth(start, end) === true;
+  const displayLabels = labels.map(d => {
+    const date = new Date(d);
+    return date.toLocaleDateString('default', { month: 'short', ...(showDay ? { day: '2-digit' } : { year: 'numeric' }) });
+  });
 
   const ctx = document.getElementById('lineChart').getContext('2d');
   if (lineChart) lineChart.destroy();
   lineChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels:labels.map(k => k.slice(5)), // MM-DD,
+      labels: displayLabels,
       datasets: [
         { label: 'Sales', data: sales, borderColor: '#36a2eb', fill: false },
         { label: 'Revenue', data: revenue, borderColor: '#ff6384', fill: false }
@@ -291,11 +276,16 @@ function updateLineChart(timeline, startDateStr) {
     },
     options: {
       responsive: true,
-      scales: {
-        y: { beginAtZero: true }
-      }
+      scales: { y: { beginAtZero: true } }
     }
   });
+}
+
+function isSameMonth(start, end) {
+  if (!start || !end) return false;
+  const d1 = new Date(start);
+  const d2 = new Date(end);
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth();
 }
 
 function renderTable(id, data, keys) {
@@ -312,12 +302,13 @@ function renderTable(id, data, keys) {
   });
 }
 
-// Load data on first run
+// Initial load
 fetchData();
 </script>
 
 </body>
 </html>
+
 
 
 
