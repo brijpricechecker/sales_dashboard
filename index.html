@@ -52,52 +52,62 @@
       if (endDate) params.append("endDate", endDate);
       if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec/exec?' + params.toString())
+      // ✅ Corrected URL
+      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?' + params.toString())
         .then(res => res.json())
-        .then(drawCharts);
+        .then(data => {
+          updateSupplierDropdown(data.allSuppliers || []);
+          drawSalesPurchasesChart(data);
+        });
     }
 
-    function drawCharts(data) {
-      drawSalesPurchasesChart(data);
-      updateSupplierDropdown(data.allSuppliers || []);
+    function updateSupplierDropdown(suppliers) {
+      const select = document.getElementById('supplier');
+      const currentSelection = Array.from(select.selectedOptions).map(o => o.value);
+      select.innerHTML = '';
+      suppliers.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s;
+        if (currentSelection.includes(s)) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
     }
 
     function drawSalesPurchasesChart(data) {
-      const startDate = new Date(document.getElementById('startDate').value);
-      const endDate = new Date(document.getElementById('endDate').value);
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      if (!start || !end) return;
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
       const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
       let chartData = [['Date', 'Sales', 'Purchases']];
-      const monthly = data.monthly || {};
       const timeline = data.timeline || {};
+      const monthly = data.monthly || {};
 
       if (diffDays <= 10) {
-        // Daily data
         Object.keys(timeline).sort().forEach(key => {
           const sales = timeline[key]?.sales || 0;
-          const purchases = 0; // daily purchases not tracked
+          const purchases = timeline[key]?.purchases || 0;
           chartData.push([formatDateLabel(key, 'daily'), sales, purchases]);
         });
       } else if (diffDays <= 28) {
-        // Weekly data
         const weekMap = {};
         for (const key in timeline) {
           const date = new Date(key);
           const weekKey = getWeekStart(date);
           if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
           weekMap[weekKey].sales += timeline[key].sales || 0;
-        }
-        for (const key in monthly) {
-          const date = new Date(key + '-01');
-          const weekKey = getWeekStart(date);
-          if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
-          weekMap[weekKey].purchases += monthly[key].purchases || 0;
+          weekMap[weekKey].purchases += timeline[key].purchases || 0;
         }
         Object.keys(weekMap).sort().forEach(week => {
           chartData.push([formatDateLabel(week, 'weekly'), weekMap[week].sales, weekMap[week].purchases]);
         });
       } else {
-        // Monthly data
         Object.keys(monthly).sort().forEach(month => {
           const sales = monthly[month]?.sales || 0;
           const purchases = monthly[month]?.purchases || 0;
@@ -134,20 +144,10 @@ fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKf
       const monday = new Date(d.setDate(diff));
       return monday.toISOString().split('T')[0];
     }
-
-    function updateSupplierDropdown(suppliers) {
-      const select = document.getElementById('supplier');
-      select.innerHTML = '';
-      suppliers.forEach(s => {
-        const option = document.createElement('option');
-        option.value = s;
-        option.textContent = s;
-        select.appendChild(option);
-      });
-    }
   </script>
 </body>
 </html>
+
 
 
 
