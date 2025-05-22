@@ -1,320 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Inventory Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <base target="_top">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <style>
-    body, html {
-      margin: 0;
+    body {
       font-family: Arial, sans-serif;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
     }
-    .filters {
+    #controls, #charts {
+      margin: 10px;
+    }
+    #charts {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      padding: 10px;
-      align-items: center;
+      gap: 20px;
     }
-    .filters input[type="date"], .filters button {
-      padding: 5px;
-    }
-    .dropdown {
-      position: relative;
-      width: 250px;
-    }
-    .dropdown-btn {
-      border: 1px solid #ccc;
-      padding: 8px;
-      background: white;
-      cursor: pointer;
-    }
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background: white;
-      border: 1px solid #ccc;
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 10;
-      width: 100%;
-    }
-    .dropdown-content label {
-      display: block;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    .dropdown-content input[type="text"] {
-      width: 90%;
-      margin: 5px;
-      padding: 5px;
-    }
-    .kpis {
-      display: flex;
-      justify-content: space-around;
-      height: 10vh;
-      padding: 10px;
-      background: #f4f4f4;
-    }
-    .kpi {
+    .chart-container {
       flex: 1;
-      text-align: center;
-      border: 1px solid #ccc;
-      margin: 0 5px;
-      padding: 10px;
-      background-color: #e9f5ff;
-      font-weight: bold;
-    }
-    .charts {
-      display: flex;
-      height: 40vh;
-      padding: 10px;
-      gap: 10px;
-    }
-    canvas {
-      flex: 1;
-    }
-    .tables {
-      display: flex;
-      height: 40vh;
-      padding: 10px;
-      gap: 10px;
-    }
-    .table-container {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    table, th, td {
-      border: 1px solid #aaa;
-    }
-    th, td {
-      padding: 6px;
-      text-align: left;
-    }
-    th {
-      background-color: #eee;
+      min-width: 450px;
+      height: 400px;
     }
   </style>
 </head>
 <body>
-
-<div class="filters">
-  <input type="date" id="startDate">
-  <input type="date" id="endDate">
-  <div class="dropdown" id="supplierDropdown">
-    <div class="dropdown-btn" id="dropdownButton">Select Suppliers</div>
-    <div class="dropdown-content" id="supplierListWrapper">
-      <input type="text" placeholder="Search..." id="supplierSearch" onkeyup="filterSuppliers(this)">
-      <div id="supplierList"></div>
-    </div>
+  <div id="controls">
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate">
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate">
+    <label for="supplier">Supplier:</label>
+    <select id="supplier" multiple></select>
+    <button onclick="fetchData()">Apply</button>
   </div>
-  <button onclick="fetchData()">Apply Filters</button>
-</div>
 
-<div class="kpis">
-  <div class="kpi">Total Sales: <span id="totalSales">0</span></div>
-  <div class="kpi">Total Purchases: <span id="totalPurchases">0</span></div>
-  <div class="kpi">Total Revenue: <span id="totalRevenue">0</span></div>
-</div>
-
-<div class="charts">
-  <canvas id="barChart"></canvas>
-  <canvas id="lineChart"></canvas>
-</div>
-
-<div class="tables">
-  <div class="table-container">
-    <h4>Top 10 Items by Sales</h4>
-    <table id="topSalesTable">
-      <thead><tr><th>Item</th><th>Qty</th><th>Sales</th></tr></thead>
-      <tbody></tbody>
-    </table>
+  <div id="charts">
+    <div id="salesPurchasesChart" class="chart-container"></div>
   </div>
-  <div class="table-container">
-    <h4>Top 10 Items by Revenue</h4>
-    <table id="topRevenueTable">
-      <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <div class="table-container">
-    <h4>Revenue by Supplier</h4>
-    <table id="revenueBySupplierTable">
-      <thead><tr><th>Supplier</th><th>Revenue</th><th>Sales</th><th>Purchases</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</div>
 
-<script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace this with your deployed web app URL
+  <script>
+    google.charts.load('current', { packages: ['corechart'] });
+    google.charts.setOnLoadCallback(fetchData);
 
-let barChart, lineChart;
+    function fetchData() {
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const supplierSelect = document.getElementById('supplier');
+      const selectedSuppliers = Array.from(supplierSelect.selectedOptions).map(o => o.value);
 
-document.getElementById("dropdownButton").addEventListener("click", function () {
-  const wrapper = document.getElementById("supplierListWrapper");
-  wrapper.style.display = wrapper.style.display === "block" ? "none" : "block";
-});
-document.addEventListener("click", function (e) {
-  if (!e.target.closest("#supplierDropdown")) {
-    document.getElementById("supplierListWrapper").style.display = "none";
-  }
-});
+      const params = new URLSearchParams();
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-function renderSupplierDropdown(suppliers) {
-  const supplierList = document.getElementById("supplierList");
-  supplierList.innerHTML = '';
-  supplierList.insertAdjacentHTML("beforeend", `<label><input type="checkbox" id="selectAll" checked onchange="toggleAll(this)"> Select All</label>`);
-  suppliers.forEach(supplier => {
-    const label = document.createElement("label");
-    label.innerHTML = `<input type="checkbox" value="${supplier}" checked> ${supplier}`;
-    supplierList.appendChild(label);
-  });
-}
+fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec/exec?' + params.toString())
+        .then(res => res.json())
+        .then(drawCharts);
+    }
 
-function filterSuppliers(input) {
-  const filter = input.value.toLowerCase();
-  const labels = document.querySelectorAll('#supplierList label');
-  labels.forEach(label => {
-    label.style.display = label.textContent.toLowerCase().includes(filter) ? '' : 'none';
-  });
-}
+    function drawCharts(data) {
+      drawSalesPurchasesChart(data);
+      updateSupplierDropdown(data.allSuppliers || []);
+    }
 
-function toggleAll(source) {
-  const checkboxes = document.querySelectorAll('#supplierList input[type="checkbox"]');
-  checkboxes.forEach(cb => {
-    if (cb !== source) cb.checked = source.checked;
-  });
-  fetchData();
-}
+    function drawSalesPurchasesChart(data) {
+      const startDate = new Date(document.getElementById('startDate').value);
+      const endDate = new Date(document.getElementById('endDate').value);
+      const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
-function getSelectedSuppliers() {
-  const checked = Array.from(document.querySelectorAll('#supplierList input[type="checkbox"]:checked'))
-    .map(cb => cb.value);
-  return checked.includes("Select All") ? [] : checked;
-}
+      let chartData = [['Date', 'Sales', 'Purchases']];
+      const monthly = data.monthly || {};
+      const timeline = data.timeline || {};
 
-function fetchData() {
-  const start = document.getElementById("startDate").value;
-  const end = document.getElementById("endDate").value;
-  const suppliers = getSelectedSuppliers().join(",");
-
-  const url = `${SHEET_URL}?startDate=${start}&endDate=${end}&supplier=${encodeURIComponent(suppliers)}`;
-
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("totalSales").textContent = data.totals.sales;
-      document.getElementById("totalPurchases").textContent = data.totals.purchases;
-      document.getElementById("totalRevenue").textContent = data.totals.revenue;
-
-      updateBarChart(data.monthly, start, end);
-      updateLineChart(data.timeline, start, end);
-      renderTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
-      renderTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-      renderTable("revenueBySupplierTable", data.revenueBySupplier, ["supplier", "revenue", "sales", "purchases"]);
-      renderSupplierDropdown(data.allSuppliers);
-    });
-}
-
-function formatLabel(dateStr, showDay) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('default', showDay ? { month: 'short', day: '2-digit' } : { month: 'short' });
-}
-
-function isSameMonth(start, end) {
-  if (!start || !end) return false;
-  const d1 = new Date(start);
-  const d2 = new Date(end);
-  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth();
-}
-
-function updateBarChart(monthly, start, end) {
-  const labels = Object.keys(monthly).sort();
-  const sales = labels.map(m => monthly[m].sales);
-  const purchases = labels.map(m => monthly[m].purchases);
-  const showDay = isSameMonth(start, end);
-  const displayLabels = labels.map(k => formatLabel(k + '-01', showDay));
-
-  const ctx = document.getElementById('barChart').getContext('2d');
-  if (barChart) barChart.destroy();
-  barChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: displayLabels,
-      datasets: [
-        {
-          label: 'Sales',
-          data: sales,
-          backgroundColor: 'rgba(54, 162, 235, 0.6)'
-        },
-        {
-          label: 'Purchases',
-          data: purchases,
-          backgroundColor: 'rgba(255, 99, 132, 0.6)'
+      if (diffDays <= 10) {
+        // Daily data
+        Object.keys(timeline).sort().forEach(key => {
+          const sales = timeline[key]?.sales || 0;
+          const purchases = 0; // daily purchases not tracked
+          chartData.push([formatDateLabel(key, 'daily'), sales, purchases]);
+        });
+      } else if (diffDays <= 28) {
+        // Weekly data
+        const weekMap = {};
+        for (const key in timeline) {
+          const date = new Date(key);
+          const weekKey = getWeekStart(date);
+          if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
+          weekMap[weekKey].sales += timeline[key].sales || 0;
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { stacked: false },
-        y: { beginAtZero: true, stacked: false }
+        for (const key in monthly) {
+          const date = new Date(key + '-01');
+          const weekKey = getWeekStart(date);
+          if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
+          weekMap[weekKey].purchases += monthly[key].purchases || 0;
+        }
+        Object.keys(weekMap).sort().forEach(week => {
+          chartData.push([formatDateLabel(week, 'weekly'), weekMap[week].sales, weekMap[week].purchases]);
+        });
+      } else {
+        // Monthly data
+        Object.keys(monthly).sort().forEach(month => {
+          const sales = monthly[month]?.sales || 0;
+          const purchases = monthly[month]?.purchases || 0;
+          chartData.push([formatDateLabel(month, 'monthly'), sales, purchases]);
+        });
       }
+
+      const dataTable = google.visualization.arrayToDataTable(chartData);
+      const options = {
+        title: 'Sales vs Purchases',
+        hAxis: { title: 'Date' },
+        vAxis: { title: 'Amount' },
+        isStacked: false,
+        seriesType: 'bars',
+        legend: { position: 'top' },
+        bar: { groupWidth: '50%' }
+      };
+      const chart = new google.visualization.ComboChart(document.getElementById('salesPurchasesChart'));
+      chart.draw(dataTable, options);
     }
-  });
-}
 
-function updateLineChart(timeline, start, end) {
-  const labels = Object.keys(timeline).filter(d => !start || d >= start).sort();
-  const sales = labels.map(d => timeline[d].sales);
-  const revenue = labels.map(d => timeline[d].revenue);
-  const showDay = isSameMonth(start, end);
-  const displayLabels = labels.map(d => formatLabel(d, showDay));
-
-  const ctx = document.getElementById('lineChart').getContext('2d');
-  if (lineChart) lineChart.destroy();
-  lineChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: displayLabels,
-      datasets: [
-        { label: 'Sales', data: sales, borderColor: '#36a2eb', fill: false },
-        { label: 'Revenue', data: revenue, borderColor: '#ff6384', fill: false }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true } }
+    function formatDateLabel(dateStr, mode) {
+      const date = new Date(dateStr);
+      const options = { month: 'short' };
+      if (mode === 'daily') options.day = '2-digit';
+      if (mode === 'monthly') options.year = 'numeric';
+      return date.toLocaleDateString('en-US', options);
     }
-  });
-}
 
-function renderTable(id, data, keys) {
-  const tbody = document.getElementById(id).querySelector("tbody");
-  tbody.innerHTML = "";
-  data.forEach(row => {
-    const tr = document.createElement("tr");
-    keys.forEach(key => {
-      const td = document.createElement("td");
-      td.textContent = row[key];
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-}
+    function getWeekStart(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust to Monday
+      const monday = new Date(d.setDate(diff));
+      return monday.toISOString().split('T')[0];
+    }
 
-fetchData();
-</script>
-
+    function updateSupplierDropdown(suppliers) {
+      const select = document.getElementById('supplier');
+      select.innerHTML = '';
+      suppliers.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s;
+        select.appendChild(option);
+      });
+    }
+  </script>
 </body>
 </html>
 
