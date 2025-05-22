@@ -54,7 +54,9 @@ text-align: center;
 border: 1px solid #ccc;
 margin: 0 5px;
 padding: 10px;
-background-color: #fff;
+//background-color: #fff;
+background-color: #e9f5ff;
+font-weight: bold;  
 }
 .charts {
 display: flex;
@@ -227,7 +229,7 @@ if (barChart) barChart.destroy();
 barChart = new Chart(ctx, {
 type: 'bar',
 data: {
-labels,
+labels: labels.map(k => new Date(k + '-01').toLocaleString('default', { month: 'short', year: 'numeric' })),
 datasets: [
 { label: 'Sales', data: sales, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
 { label: 'Purchases', data: purchases, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
