@@ -155,7 +155,7 @@
 </div>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace with your deployed Apps Script URL
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace this with your deployed web app URL
 
 let barChart, lineChart;
 
@@ -225,15 +225,24 @@ function fetchData() {
     });
 }
 
+function formatLabel(dateStr, showDay) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('default', showDay ? { month: 'short', day: '2-digit' } : { month: 'short' });
+}
+
+function isSameMonth(start, end) {
+  if (!start || !end) return false;
+  const d1 = new Date(start);
+  const d2 = new Date(end);
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth();
+}
+
 function updateBarChart(monthly, start, end) {
   const labels = Object.keys(monthly).sort();
   const sales = labels.map(m => monthly[m].sales);
   const purchases = labels.map(m => monthly[m].purchases);
-  const showDay = isSameMonth(start, end) === true;
-  const displayLabels = labels.map(k => {
-    const d = new Date(k + '-01');
-    return d.toLocaleDateString('default', { month: 'short', ...(showDay ? { day: '2-digit' } : { year: 'numeric' }) });
-  });
+  const showDay = isSameMonth(start, end);
+  const displayLabels = labels.map(k => formatLabel(k + '-01', showDay));
 
   const ctx = document.getElementById('barChart').getContext('2d');
   if (barChart) barChart.destroy();
@@ -242,13 +251,24 @@ function updateBarChart(monthly, start, end) {
     data: {
       labels: displayLabels,
       datasets: [
-        { label: 'Sales', data: sales, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
-        { label: 'Purchases', data: purchases, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
+        {
+          label: 'Sales',
+          data: sales,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)'
+        },
+        {
+          label: 'Purchases',
+          data: purchases,
+          backgroundColor: 'rgba(255, 99, 132, 0.6)'
+        }
       ]
     },
     options: {
       responsive: true,
-      scales: { y: { beginAtZero: true } }
+      scales: {
+        x: { stacked: false },
+        y: { beginAtZero: true, stacked: false }
+      }
     }
   });
 }
@@ -257,11 +277,8 @@ function updateLineChart(timeline, start, end) {
   const labels = Object.keys(timeline).filter(d => !start || d >= start).sort();
   const sales = labels.map(d => timeline[d].sales);
   const revenue = labels.map(d => timeline[d].revenue);
-  const showDay = isSameMonth(start, end) === true;
-  const displayLabels = labels.map(d => {
-    const date = new Date(d);
-    return date.toLocaleDateString('default', { month: 'short', ...(showDay ? { day: '2-digit' } : { year: 'numeric' }) });
-  });
+  const showDay = isSameMonth(start, end);
+  const displayLabels = labels.map(d => formatLabel(d, showDay));
 
   const ctx = document.getElementById('lineChart').getContext('2d');
   if (lineChart) lineChart.destroy();
@@ -281,13 +298,6 @@ function updateLineChart(timeline, start, end) {
   });
 }
 
-function isSameMonth(start, end) {
-  if (!start || !end) return false;
-  const d1 = new Date(start);
-  const d2 = new Date(end);
-  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth();
-}
-
 function renderTable(id, data, keys) {
   const tbody = document.getElementById(id).querySelector("tbody");
   tbody.innerHTML = "";
@@ -302,12 +312,12 @@ function renderTable(id, data, keys) {
   });
 }
 
-// Initial load
 fetchData();
 </script>
 
 </body>
 </html>
+
 
 
 
