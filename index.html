@@ -52,37 +52,19 @@
       if (endDate) params.append("endDate", endDate);
       if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-      // ✅ Corrected URL
-      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?' + params.toString())
+      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec' + params.toString())
         .then(res => res.json())
-        .then(data => {
-          updateSupplierDropdown(data.allSuppliers || []);
-          drawSalesPurchasesChart(data);
-        });
+        .then(drawCharts);
     }
 
-    function updateSupplierDropdown(suppliers) {
-      const select = document.getElementById('supplier');
-      const currentSelection = Array.from(select.selectedOptions).map(o => o.value);
-      select.innerHTML = '';
-      suppliers.forEach(s => {
-        const option = document.createElement('option');
-        option.value = s;
-        option.textContent = s;
-        if (currentSelection.includes(s)) {
-          option.selected = true;
-        }
-        select.appendChild(option);
-      });
+    function drawCharts(data) {
+      drawSalesPurchasesChart(data);
+      updateSupplierDropdown(data.allSuppliers || []);
     }
 
     function drawSalesPurchasesChart(data) {
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      if (!start || !end) return;
-
-      const startDate = new Date(start);
-      const endDate = new Date(end);
+      const startDate = new Date(document.getElementById('startDate').value);
+      const endDate = new Date(document.getElementById('endDate').value);
       const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
       let chartData = [['Date', 'Sales', 'Purchases']];
@@ -90,12 +72,14 @@
       const monthly = data.monthly || {};
 
       if (diffDays <= 10) {
+        // Daily data
         Object.keys(timeline).sort().forEach(key => {
           const sales = timeline[key]?.sales || 0;
           const purchases = timeline[key]?.purchases || 0;
-          chartData.push([formatDateLabel(key, 'daily'), sales, purchases]);
+          chartData.push([new Date(key), sales, purchases]);
         });
       } else if (diffDays <= 28) {
+        // Weekly data
         const weekMap = {};
         for (const key in timeline) {
           const date = new Date(key);
@@ -105,20 +89,21 @@
           weekMap[weekKey].purchases += timeline[key].purchases || 0;
         }
         Object.keys(weekMap).sort().forEach(week => {
-          chartData.push([formatDateLabel(week, 'weekly'), weekMap[week].sales, weekMap[week].purchases]);
+          chartData.push([new Date(week), weekMap[week].sales, weekMap[week].purchases]);
         });
       } else {
+        // Monthly data
         Object.keys(monthly).sort().forEach(month => {
           const sales = monthly[month]?.sales || 0;
           const purchases = monthly[month]?.purchases || 0;
-          chartData.push([formatDateLabel(month, 'monthly'), sales, purchases]);
+          chartData.push([new Date(month + '-01'), sales, purchases]);
         });
       }
 
       const dataTable = google.visualization.arrayToDataTable(chartData);
       const options = {
         title: 'Sales vs Purchases',
-        hAxis: { title: 'Date' },
+        hAxis: { title: 'Date', format: 'MMM dd, yyyy' },
         vAxis: { title: 'Amount' },
         isStacked: false,
         seriesType: 'bars',
@@ -129,14 +114,6 @@
       chart.draw(dataTable, options);
     }
 
-    function formatDateLabel(dateStr, mode) {
-      const date = new Date(dateStr);
-      const options = { month: 'short' };
-      if (mode === 'daily') options.day = '2-digit';
-      if (mode === 'monthly') options.year = 'numeric';
-      return date.toLocaleDateString('en-US', options);
-    }
-
     function getWeekStart(date) {
       const d = new Date(date);
       const day = d.getDay();
@@ -144,9 +121,23 @@
       const monday = new Date(d.setDate(diff));
       return monday.toISOString().split('T')[0];
     }
+
+    function updateSupplierDropdown(suppliers) {
+      const select = document.getElementById('supplier');
+      const selected = Array.from(select.selectedOptions).map(o => o.value);
+      select.innerHTML = '';
+      suppliers.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s;
+        if (selected.includes(s)) option.selected = true;
+        select.appendChild(option);
+      });
+    }
   </script>
 </body>
 </html>
+
 
 
 
