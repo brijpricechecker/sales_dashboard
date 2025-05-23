@@ -52,7 +52,7 @@
       if (endDate) params.append("endDate", endDate);
       if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec' + params.toString())
+      fetch('https://script.google.com/macros/s/YOUR_DEPLOYED_WEB_APP_URL/exec?' + params.toString())
         .then(res => res.json())
         .then(drawCharts);
     }
@@ -72,31 +72,34 @@
       const monthly = data.monthly || {};
 
       if (diffDays <= 10) {
-        // Daily data
+        // Daily
         Object.keys(timeline).sort().forEach(key => {
-          const sales = timeline[key]?.sales || 0;
-          const purchases = timeline[key]?.purchases || 0;
-          chartData.push([new Date(key), sales, purchases]);
+          const dateObj = safeDateParse(key);
+          if (dateObj) {
+            chartData.push([dateObj, timeline[key].sales || 0, timeline[key].purchases || 0]);
+          }
         });
       } else if (diffDays <= 28) {
-        // Weekly data
+        // Weekly
         const weekMap = {};
-        for (const key in timeline) {
-          const date = new Date(key);
+        Object.keys(timeline).forEach(key => {
+          const date = safeDateParse(key);
+          if (!date) return;
           const weekKey = getWeekStart(date);
           if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
           weekMap[weekKey].sales += timeline[key].sales || 0;
           weekMap[weekKey].purchases += timeline[key].purchases || 0;
-        }
+        });
         Object.keys(weekMap).sort().forEach(week => {
           chartData.push([new Date(week), weekMap[week].sales, weekMap[week].purchases]);
         });
       } else {
-        // Monthly data
+        // Monthly
         Object.keys(monthly).sort().forEach(month => {
-          const sales = monthly[month]?.sales || 0;
-          const purchases = monthly[month]?.purchases || 0;
-          chartData.push([new Date(month + '-01'), sales, purchases]);
+          const dateObj = safeDateParse(month + '-01');
+          if (dateObj) {
+            chartData.push([dateObj, monthly[month].sales || 0, monthly[month].purchases || 0]);
+          }
         });
       }
 
@@ -114,10 +117,19 @@
       chart.draw(dataTable, options);
     }
 
+    function safeDateParse(input) {
+      const date = new Date(input);
+      if (isNaN(date.getTime())) {
+        console.warn("Invalid date format:", input);
+        return null;
+      }
+      return date;
+    }
+
     function getWeekStart(date) {
       const d = new Date(date);
       const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust to Monday
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
       const monday = new Date(d.setDate(diff));
       return monday.toISOString().split('T')[0];
     }
@@ -137,14 +149,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
