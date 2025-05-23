@@ -52,7 +52,7 @@
       if (endDate) params.append("endDate", endDate);
       if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-      fetch('https://script.google.com/macros/s/YOUR_DEPLOYED_WEB_APP_URL/exec?' + params.toString())
+      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec' + params.toString())
         .then(res => res.json())
         .then(drawCharts);
     }
@@ -149,3 +149,4 @@
   </script>
 </body>
 </html>
+
