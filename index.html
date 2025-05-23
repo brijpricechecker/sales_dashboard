@@ -72,17 +72,19 @@
       drawSupplierChart(data.revenueBySupplier);
     }
 
-    function populateSuppliers(suppliers) {
-      const select = document.getElementById('supplierSelect');
-      if (select.options.length === 0) {
-        suppliers.forEach(supplier => {
-          const option = document.createElement('option');
-          option.value = supplier;
-          option.textContent = supplier;
-          select.appendChild(option);
-        });
-      }
-    }
+function populateSuppliers(suppliers) {
+  const select = document.getElementById('supplierSelect');
+  select.innerHTML = ''; // Always reset options
+  suppliers.forEach(supplier => {
+    if (!supplier) return;
+    const option = document.createElement('option');
+    option.value = supplier;
+    option.textContent = supplier;
+    select.appendChild(option);
+  });
+}
+
+
 
     function drawTimelineChart(timeline) {
       const dataArray = [['Date', 'Sales', 'Revenue']];
