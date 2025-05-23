@@ -1,193 +1,141 @@
+// ✅ FRONTEND CODE WITH POP-UP CHECKBOX FILTER AND REAL-TIME FILTERING
+
 <!DOCTYPE html>
 <html>
 <head>
   <title>Inventory Dashboard</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    #controls {
-      margin-bottom: 20px;
-    }
-    .section {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .chart-box, .table-box {
-      width: 48%;
-      background-color: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-      min-height: 300px;
-    }
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-      background-color: #fefefe;
-      margin: 10% auto;
-      padding: 20px;
-      width: 50%;
-      border-radius: 10px;
-    }
-    .checkbox-container {
-      max-height: 300px;
-      overflow-y: auto;
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-  </style>
-</head>
-<body>
-  <div id="controls">
-    <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate">
-    <label for="endDate">End Date:</label>
-    <input type="date" id="endDate">
-    <button onclick="openSupplierModal()">Select Suppliers</button>
-  </div>
-
-  <div id="charts" class="section">
-    <div id="salesPurchasesChart" class="chart-box"></div>
-    <div id="revenueBySupplierChart" class="chart-box"></div>
-  </div>
-
-  <div class="section">
-    <div id="topSalesTable" class="table-box"></div>
-    <div id="topRevenueTable" class="table-box"></div>
-  </div>
-
-  <div id="supplierModal" class="modal">
-    <div class="modal-content">
-      <h3>Select Suppliers</h3>
-      <div id="supplierCheckboxes" class="checkbox-container"></div>
-    </div>
-  </div>
-
   <script>
-    google.charts.load('current', {'packages':['corechart', 'table']});
-    let selectedSuppliers = [];
+    google.charts.load('current', {'packages':['corechart']});
+    let allSuppliers = [], selectedSuppliers = new Set();
 
-    document.getElementById("startDate").addEventListener("change", fetchData);
-    document.getElementById("endDate").addEventListener("change", fetchData);
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("startDate").valueAsDate = new Date(new Date().setDate(new Date().getDate() - 30));
+      document.getElementById("endDate").valueAsDate = new Date();
+      fetchData();
 
-    function openSupplierModal() {
-      document.getElementById("supplierModal").style.display = "block";
-    }
-
-    function closeSupplierModal() {
-      document.getElementById("supplierModal").style.display = "none";
-    }
-
-    function updateSupplierDropdown(suppliers) {
-      const container = document.getElementById("supplierCheckboxes");
-      container.innerHTML = "";
-      suppliers.forEach(supplier => {
-        const label = document.createElement("label");
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = supplier;
-        checkbox.checked = selectedSuppliers.includes(supplier);
-        checkbox.addEventListener("change", () => {
-          if (checkbox.checked) {
-            if (!selectedSuppliers.includes(supplier)) selectedSuppliers.push(supplier);
-          } else {
-            selectedSuppliers = selectedSuppliers.filter(s => s !== supplier);
-          }
-          fetchData();
-        });
-        label.appendChild(checkbox);
-        label.append(" " + supplier);
-        container.appendChild(label);
-        container.appendChild(document.createElement("br"));
-      });
-      closeSupplierModal();
-    }
+      document.getElementById("startDate").addEventListener("change", fetchData);
+      document.getElementById("endDate").addEventListener("change", fetchData);
+    });
 
     function fetchData() {
       const startDate = document.getElementById("startDate").value;
       const endDate = document.getElementById("endDate").value;
-      const params = new URLSearchParams();
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-      if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(","));
+      const supplier = Array.from(selectedSuppliers).join(',');
+      const url = `https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?startDate=${startDate}&endDate=${endDate}&supplier=${supplier}`;
 
-      fetch("https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec" + params.toString())
+      fetch(url)
         .then(res => res.json())
         .then(data => {
-          drawSalesPurchasesChart(data);
-          drawRevenueBySupplierChart(data);
-          drawTopSalesTable(data.topSales);
-          drawTopRevenueTable(data.topRevenue);
-          updateSupplierDropdown(data.allSuppliers || []);
+          if (data.allSuppliers && data.allSuppliers.length > 0) {
+            populateSupplierFilter(data.allSuppliers);
+          }
+          drawCharts(data);
         });
     }
 
-    function drawSalesPurchasesChart(data) {
-      const chartData = new google.visualization.DataTable();
-      chartData.addColumn('string', 'Date');
-      chartData.addColumn('number', 'Sales');
-      chartData.addColumn('number', 'Revenue');
-      Object.entries(data.timeline || {}).forEach(([date, d]) => {
-        chartData.addRow([date, d.sales, d.revenue]);
+    function populateSupplierFilter(suppliers) {
+      const container = document.getElementById("supplierCheckboxes");
+      container.innerHTML = '';
+      allSuppliers = suppliers;
+
+      suppliers.forEach(supplier => {
+        const id = `sup_${supplier.replace(/\W/g, '_')}`;
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = id;
+        checkbox.value = supplier;
+        checkbox.checked = true;
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) selectedSuppliers.add(supplier);
+          else selectedSuppliers.delete(supplier);
+          fetchData();
+        });
+
+        const label = document.createElement("label");
+        label.htmlFor = id;
+        label.innerText = supplier;
+
+        const div = document.createElement("div");
+        div.appendChild(checkbox);
+        div.appendChild(label);
+
+        container.appendChild(div);
+        selectedSuppliers.add(supplier);
       });
-      const chart = new google.visualization.LineChart(document.getElementById('salesPurchasesChart'));
-      chart.draw(chartData, { title: 'Sales & Revenue Over Time', height: 300 });
     }
 
-    function drawRevenueBySupplierChart(data) {
-      const chartData = new google.visualization.DataTable();
-      chartData.addColumn('string', 'Supplier');
-      chartData.addColumn('number', 'Revenue');
-      data.revenueBySupplier.forEach(s => {
-        chartData.addRow([s.supplier, s.revenue]);
-      });
-      const chart = new google.visualization.PieChart(document.getElementById('revenueBySupplierChart'));
-      chart.draw(chartData, { title: 'Revenue by Supplier', height: 300 });
+    function drawCharts(data) {
+      document.getElementById("salesTotal").innerText = data.totals.sales;
+      document.getElementById("purchasesTotal").innerText = data.totals.purchases;
+      document.getElementById("revenueTotal").innerText = data.totals.revenue;
+
+      drawTimelineChart(data.timeline);
+      drawTopTable(data.topSales, "topSalesTable", "Top Sales");
+      drawTopTable(data.topRevenue, "topRevenueTable", "Top Revenue");
     }
 
-    function drawTopSalesTable(items) {
-      const dataTable = new google.visualization.DataTable();
-      dataTable.addColumn('string', 'Item');
-      dataTable.addColumn('number', 'Quantity');
-      dataTable.addColumn('number', 'Sales');
+    function drawTimelineChart(timeline) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Date');
+      data.addColumn('number', 'Sales');
+      data.addColumn('number', 'Revenue');
+
+      Object.keys(timeline).sort().forEach(date => {
+        const entry = timeline[date];
+        data.addRow([date, entry.sales, entry.revenue]);
+      });
+
+      const chart = new google.visualization.LineChart(document.getElementById('timelineChart'));
+      chart.draw(data, { title: 'Sales & Revenue Over Time', curveType: 'function', legend: { position: 'bottom' } });
+    }
+
+    function drawTopTable(items, containerId, title) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = `<h3>${title}</h3><table><tr><th>Item</th><th>Qty</th><th>Sales</th><th>Revenue</th></tr></table>`;
+      const table = container.querySelector("table");
+
       items.forEach(item => {
-        dataTable.addRow([item.name, item.quantity, item.sales]);
+        const row = table.insertRow();
+        row.insertCell().innerText = item.name;
+        row.insertCell().innerText = item.quantity || 0;
+        row.insertCell().innerText = item.sales?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '';
+        row.insertCell().innerText = item.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '';
       });
-      const table = new google.visualization.Table(document.getElementById('topSalesTable'));
-      table.draw(dataTable, { showRowNumber: true, width: '100%' });
     }
-
-    function drawTopRevenueTable(items) {
-      const dataTable = new google.visualization.DataTable();
-      dataTable.addColumn('string', 'Item');
-      dataTable.addColumn('number', 'Quantity');
-      dataTable.addColumn('number', 'Revenue');
-      items.forEach(item => {
-        dataTable.addRow([item.name, item.quantity, item.revenue]);
-      });
-      const table = new google.visualization.Table(document.getElementById('topRevenueTable'));
-      table.draw(dataTable, { showRowNumber: true, width: '100%' });
-    }
-
-    google.charts.setOnLoadCallback(fetchData);
   </script>
+  <style>
+    #supplierPopup { position: fixed; top: 10%; left: 10%; width: 300px; background: #fff; border: 1px solid #ccc; padding: 15px; display: none; z-index: 1000; }
+    #supplierPopup h3 { margin-top: 0; }
+    #supplierPopup button { margin-top: 10px; }
+    #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; }
+  </style>
+</head>
+<body>
+  <h1>Inventory Dashboard</h1>
+  <label>Start Date: <input type="date" id="startDate"></label>
+  <label>End Date: <input type="date" id="endDate"></label>
+  <button onclick="document.getElementById('supplierPopup').style.display='block'; document.getElementById('overlay').style.display='block';">Filter Supplier</button>
+
+  <div id="overlay" onclick="document.getElementById('supplierPopup').style.display='none'; document.getElementById('overlay').style.display='none';"></div>
+  <div id="supplierPopup">
+    <h3>Select Suppliers</h3>
+    <div id="supplierCheckboxes"></div>
+    <button onclick="document.getElementById('supplierPopup').style.display='none'; document.getElementById('overlay').style.display='none';">Close</button>
+  </div>
+
+  <h2>Totals</h2>
+  <p>Sales: <span id="salesTotal"></span></p>
+  <p>Purchases: <span id="purchasesTotal"></span></p>
+  <p>Revenue: <span id="revenueTotal"></span></p>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+    <div id="timelineChart" style="width: 60%; height: 400px;"></div>
+    <div id="topSalesTable" style="width: 35%; overflow-y: auto;"></div>
+    <div id="topRevenueTable" style="width: 35%; overflow-y: auto;"></div>
+  </div>
 </body>
 </html>
+
 
 
