@@ -38,6 +38,8 @@
   </div>
 
   <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace with your actual deployed URL
+
     google.charts.load('current', { packages: ['corechart'] });
     google.charts.setOnLoadCallback(fetchData);
 
@@ -52,14 +54,15 @@
       if (endDate) params.append("endDate", endDate);
       if (selectedSuppliers.length) params.append("supplier", selectedSuppliers.join(','));
 
-      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec' + params.toString())
+      fetch(`${API_URL}?${params.toString()}`)
         .then(res => res.json())
-        .then(drawCharts);
+        .then(drawCharts)
+        .catch(err => console.error("Fetch error:", err));
     }
 
     function drawCharts(data) {
-      drawSalesPurchasesChart(data);
       updateSupplierDropdown(data.allSuppliers || []);
+      drawSalesPurchasesChart(data);
     }
 
     function drawSalesPurchasesChart(data) {
@@ -69,84 +72,76 @@
 
       let chartData = [['Date', 'Sales', 'Purchases']];
       const timeline = data.timeline || {};
+      const weekly = data.weekly || {};
       const monthly = data.monthly || {};
 
       if (diffDays <= 10) {
         // Daily
-        Object.keys(timeline).sort().forEach(key => {
-          const dateObj = safeDateParse(key);
-          if (dateObj) {
-            chartData.push([dateObj, timeline[key].sales || 0, timeline[key].purchases || 0]);
-          }
+        Object.keys(timeline).sort().forEach(dateStr => {
+          const date = new Date(dateStr);
+          const sales = timeline[dateStr]?.sales || 0;
+          const purchases = timeline[dateStr]?.purchases || 0;
+          chartData.push([date, sales, purchases]);
         });
       } else if (diffDays <= 28) {
         // Weekly
-        const weekMap = {};
-        Object.keys(timeline).forEach(key => {
-          const date = safeDateParse(key);
-          if (!date) return;
-          const weekKey = getWeekStart(date);
-          if (!weekMap[weekKey]) weekMap[weekKey] = { sales: 0, purchases: 0 };
-          weekMap[weekKey].sales += timeline[key].sales || 0;
-          weekMap[weekKey].purchases += timeline[key].purchases || 0;
-        });
-        Object.keys(weekMap).sort().forEach(week => {
-          chartData.push([new Date(week), weekMap[week].sales, weekMap[week].purchases]);
+        Object.keys(weekly).sort().forEach(dateStr => {
+          const date = parseISOWeekString(dateStr);
+          const sales = weekly[dateStr]?.sales || 0;
+          const purchases = weekly[dateStr]?.purchases || 0;
+          chartData.push([date, sales, purchases]);
         });
       } else {
         // Monthly
-        Object.keys(monthly).sort().forEach(month => {
-          const dateObj = safeDateParse(month + '-01');
-          if (dateObj) {
-            chartData.push([dateObj, monthly[month].sales || 0, monthly[month].purchases || 0]);
-          }
+        Object.keys(monthly).sort().forEach(dateStr => {
+          const date = new Date(dateStr + '-01');
+          const sales = monthly[dateStr]?.sales || 0;
+          const purchases = monthly[dateStr]?.purchases || 0;
+          chartData.push([date, sales, purchases]);
         });
       }
 
       const dataTable = google.visualization.arrayToDataTable(chartData);
       const options = {
         title: 'Sales vs Purchases',
-        hAxis: { title: 'Date', format: 'MMM dd, yyyy' },
+        hAxis: { title: 'Date', format: 'MMM d, yyyy' },
         vAxis: { title: 'Amount' },
         isStacked: false,
         seriesType: 'bars',
         legend: { position: 'top' },
         bar: { groupWidth: '50%' }
       };
+
       const chart = new google.visualization.ComboChart(document.getElementById('salesPurchasesChart'));
       chart.draw(dataTable, options);
     }
 
-    function safeDateParse(input) {
-      const date = new Date(input);
-      if (isNaN(date.getTime())) {
-        console.warn("Invalid date format:", input);
-        return null;
+    function parseISOWeekString(isoWeekStr) {
+      const [year, weekPart] = isoWeekStr.split('-W');
+      const week = parseInt(weekPart, 10);
+      const simple = new Date(year, 0, 1 + (week - 1) * 7);
+      const dow = simple.getDay();
+      const ISOweekStart = simple;
+      if (dow <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+      } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
       }
-      return date;
-    }
-
-    function getWeekStart(date) {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-      const monday = new Date(d.setDate(diff));
-      return monday.toISOString().split('T')[0];
+      return ISOweekStart;
     }
 
     function updateSupplierDropdown(suppliers) {
       const select = document.getElementById('supplier');
-      const selected = Array.from(select.selectedOptions).map(o => o.value);
+      const currentValues = Array.from(select.selectedOptions).map(opt => opt.value);
       select.innerHTML = '';
       suppliers.forEach(s => {
         const option = document.createElement('option');
         option.value = s;
         option.textContent = s;
-        if (selected.includes(s)) option.selected = true;
+        if (currentValues.includes(s)) option.selected = true;
         select.appendChild(option);
       });
     }
   </script>
 </body>
 </html>
-
