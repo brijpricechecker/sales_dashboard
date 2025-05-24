@@ -187,7 +187,8 @@
         params.append('supplier', selectedSuppliers.join(','));
       }
 
-      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec' + params.toString())
+      fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?' + params.toString())
+
         .then(res => res.json())
         .then(drawDashboard)
         .catch(err => console.error('Error loading data', err));
