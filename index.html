@@ -1,266 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Inventory Dashboard</title>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
-      margin: 10px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
       background: #f4f4f4;
     }
-    .kpi-container {
+    .kpis {
       display: flex;
       justify-content: space-around;
-      height: 12vh;
-      margin-bottom: 10px;
+      align-items: center;
+      height: 12%;
+      background: #fff;
+      padding: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .kpi {
-      background: #4CAF50;
-      color: white;
       flex: 1;
-      margin: 5px;
-      border-radius: 10px;
-      text-align: center;
+      margin: 0 10px;
       padding: 10px;
+      background-color: #e3f2fd;
+      border-radius: 8px;
+      text-align: center;
       position: relative;
     }
-    .kpi.blue { background: #2196F3; }
-    .kpi.orange { background: #FF9800; }
-    .kpi .tooltip {
+    .kpi:hover::after {
+      content: attr(data-tooltip);
       position: absolute;
-      bottom: 100%;
+      bottom: -25px;
       left: 50%;
       transform: translateX(-50%);
-      background: black;
-      color: white;
+      background: #333;
+      color: #fff;
       padding: 5px;
       border-radius: 5px;
-      display: none;
       font-size: 12px;
       white-space: nowrap;
     }
-    .kpi:hover .tooltip {
-      display: block;
-    }
-
-    .controls {
+    .charts {
       display: flex;
-      align-items: center;
+      height: 40%;
+      padding: 10px;
       gap: 10px;
-      margin-bottom: 10px;
     }
-
-    .charts-row {
-      display: flex;
-      height: 40vh;
-    }
-
-    .chart {
+    .chart-box {
       flex: 1;
-      margin: 10px;
-      background: white;
+      background: #fff;
       padding: 10px;
       border-radius: 10px;
     }
-
-    .tables-row {
+    .tables {
       display: flex;
-      height: 40vh;
+      height: 40%;
+      padding: 10px;
+      gap: 10px;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-    table, th, td {
-      border: 1px solid #ddd;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    td, th {
-      padding: 6px;
-      text-align: left;
-    }
-
-    #supplierFilter {
-      width: 200px;
-      height: 100px;
-    }
-
-    #dateInputs {
-      display: none;
+    .table-box {
+      flex: 1;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      overflow-y: auto;
     }
   </style>
 </head>
 <body>
-  <div class="kpi-container">
-    <div class="kpi blue">Sales <div id="salesKPI"></div><div class="tooltip">Total sales amount</div></div>
-    <div class="kpi orange">Purchases <div id="purchasesKPI"></div><div class="tooltip">Total purchases amount</div></div>
-    <div class="kpi">Revenue <div id="revenueKPI"></div><div class="tooltip">Total revenue (Qty × Rev)</div></div>
+  <div class="kpis">
+    <div class="kpi" data-tooltip="Total revenue from item-wise rev * quantity">Revenue: ₱<span id="revenue"></span></div>
+    <div class="kpi" data-tooltip="Total of all sales amount during the selected period">Sales: ₱<span id="sales"></span></div>
+    <div class="kpi" data-tooltip="Total cost of purchases during the selected period">Purchases: ₱<span id="purchases"></span></div>
   </div>
 
-  <div class="controls">
-    <label>Date View:
-      <select id="dateView">
-        <option value="monthly" selected>Monthly</option>
-        <option value="weekly">Weekly</option>
-        <option value="daily">Daily</option>
-      </select>
-    </label>
-    <span id="dateInputs">
-      <label>Start: <input type="date" id="startDate" /></label>
-      <label>End: <input type="date" id="endDate" /></label>
-    </span>
-    <label>Suppliers:
-      <select id="supplierFilter" multiple></select>
-    </label>
-    <label><input type="checkbox" id="selectAllSuppliers" checked /> Select All</label>
-  </div>
-
-  <div class="charts-row">
-    <div class="chart" id="timelineChart"></div>
-    <div class="chart" id="supplierChart"></div>
-  </div>
-
-  <div class="tables-row">
-    <div class="chart">
-      <h4>Top 10 Sales</h4>
-      <table id="topSalesTable"><thead></thead><tbody></tbody></table>
+  <div class="charts">
+    <div class="chart-box">
+      <canvas id="salesRevenueChart"></canvas>
     </div>
-    <div class="chart">
+    <div class="chart-box">
+      <canvas id="salesPurchasesChart"></canvas>
+    </div>
+  </div>
+
+  <div class="tables">
+    <div class="table-box">
+      <h4>Top 10 Sales</h4>
+      <table id="topSalesTable"></table>
+    </div>
+    <div class="table-box">
       <h4>Top 10 Revenue</h4>
-      <table id="topRevenueTable"><thead></thead><tbody></tbody></table>
+      <table id="topRevenueTable"></table>
     </div>
   </div>
 
   <script>
-    google.charts.load("current", { packages: ["corechart"] });
-    document.addEventListener("DOMContentLoaded", () => {
-      const dateView = document.getElementById("dateView");
-      const startDate = document.getElementById("startDate");
-      const endDate = document.getElementById("endDate");
-      const supplierFilter = document.getElementById("supplierFilter");
-      const selectAllSuppliers = document.getElementById("selectAllSuppliers");
+    async function loadData() {
+      const res = await fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec');
+      const data = await res.json();
 
-      const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // ⬅️ Replace with your Web App URL
+      document.getElementById('revenue').textContent = data.totals.revenue;
+      document.getElementById('sales').textContent = data.totals.sales;
+      document.getElementById('purchases').textContent = data.totals.purchases;
 
-      function fetchData() {
-        const view = dateView.value;
-        const params = new URLSearchParams();
-        params.append('view', view);
+      const timelineLabels = Object.keys(data.timeline).sort();
+      const salesData = timelineLabels.map(d => data.timeline[d].sales);
+      const revenueData = timelineLabels.map(d => data.timeline[d].revenue);
 
-        if (view === "daily") {
-          if (startDate.value) params.append("startDate", startDate.value);
-          if (endDate.value) params.append("endDate", endDate.value);
+      const ctx1 = document.getElementById('salesRevenueChart').getContext('2d');
+      new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: timelineLabels,
+          datasets: [
+            {
+              label: 'Sales',
+              data: salesData,
+              borderColor: 'blue',
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Revenue',
+              data: revenueData,
+              borderColor: 'green',
+              fill: false,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ₱${context.formattedValue}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Date' }
+            },
+            y: {
+              title: { display: true, text: 'Amount (₱)' }
+            }
+          }
         }
-
-        const selected = Array.from(supplierFilter.selectedOptions).map(o => o.value);
-        if (!selectAllSuppliers.checked && selected.length) {
-          params.append("supplier", selected.join(","));
-        }
-
-        fetch(`${deployedWebAppUrl}?${params.toString()}`)
-          .then(res => res.json())
-          .then(drawDashboard);
-      }
-
-      function drawDashboard(data) {
-        document.getElementById("salesKPI").textContent = data.totals.sales;
-        document.getElementById("purchasesKPI").textContent = data.totals.purchases;
-        document.getElementById("revenueKPI").textContent = data.totals.revenue;
-
-        updateSelectOptions(data.allSuppliers);
-
-        drawLineChart(data.timeline);
-        drawDonutChart(data.revenueBySupplier);
-        drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
-        drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-      }
-
-      function updateSelectOptions(suppliers) {
-        const existing = Array.from(supplierFilter.options).map(o => o.value);
-        if (existing.length === suppliers.length) return;
-
-        supplierFilter.innerHTML = "";
-        suppliers.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = opt.textContent = s;
-          opt.selected = true;
-          supplierFilter.appendChild(opt);
-        });
-      }
-
-      function drawLineChart(dataObj) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Date");
-        data.addColumn("number", "Sales");
-        data.addColumn("number", "Revenue");
-
-        Object.entries(dataObj).forEach(([date, val]) => {
-          data.addRow([date, val.sales, val.revenue]);
-        });
-
-        const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
-        chart.draw(data, {
-          title: "Sales vs Revenue Over Time",
-          height: "100%",
-          legend: { position: "top" },
-          hAxis: { slantedText: true },
-        });
-      }
-
-      function drawDonutChart(dataArr) {
-        const data = google.visualization.arrayToDataTable([
-          ["Supplier", "Revenue"],
-          ...dataArr.map(r => [r.supplier, r.revenue])
-        ]);
-
-        const chart = new google.visualization.PieChart(document.getElementById("supplierChart"));
-        chart.draw(data, {
-          title: "Revenue by Supplier",
-          pieHole: 0.4,
-          height: "100%"
-        });
-      }
-
-      function drawTable(id, rows, keys) {
-        const table = document.getElementById(id);
-        const thead = table.querySelector("thead");
-        const tbody = table.querySelector("tbody");
-
-        thead.innerHTML = "<tr>" + keys.map(k => `<th>${k.toUpperCase()}</th>`).join("") + "</tr>";
-        tbody.innerHTML = rows.map(row =>
-          "<tr>" + keys.map(k => `<td>${row[k]}</td>`).join("") + "</tr>"
-        ).join("");
-      }
-
-      dateView.addEventListener("change", () => {
-        document.getElementById("dateInputs").style.display = dateView.value === "daily" ? "inline-block" : "none";
-        fetchData();
       });
 
-      startDate.addEventListener("change", fetchData);
-      endDate.addEventListener("change", fetchData);
-      supplierFilter.addEventListener("change", () => {
-        if (supplierFilter.selectedOptions.length !== supplierFilter.options.length) {
-          selectAllSuppliers.checked = false;
+      const months = Object.keys(data.monthly).sort();
+      const monthlySales = months.map(m => data.monthly[m].sales);
+      const monthlyPurchases = months.map(m => data.monthly[m].purchases);
+
+      const ctx2 = document.getElementById('salesPurchasesChart').getContext('2d');
+      new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: 'Sales',
+              backgroundColor: 'rgba(54, 162, 235, 0.6)',
+              data: monthlySales
+            },
+            {
+              label: 'Purchases',
+              backgroundColor: 'rgba(255, 99, 132, 0.6)',
+              data: monthlyPurchases
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              stacked: false,
+              title: { display: true, text: 'Month' }
+            },
+            y: {
+              stacked: false,
+              title: { display: true, text: 'Amount (₱)' }
+            }
+          }
         }
-        fetchData();
       });
 
-      selectAllSuppliers.addEventListener("change", () => {
-        const all = selectAllSuppliers.checked;
-        Array.from(supplierFilter.options).forEach(o => o.selected = all);
-        fetchData();
-      });
+      const salesTable = document.getElementById('topSalesTable');
+      salesTable.innerHTML = '<tr><th>Item</th><th>Quantity</th><th>Sales</th></tr>' +
+        data.topSales.map(row => `<tr><td>${row.name}</td><td>${row.quantity}</td><td>₱${row.sales.toLocaleString()}</td></tr>`).join('');
 
-      fetchData(); // Initial load
-    });
+      const revenueTable = document.getElementById('topRevenueTable');
+      revenueTable.innerHTML = '<tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr>' +
+        data.topRevenue.map(row => `<tr><td>${row.name}</td><td>${row.quantity}</td><td>₱${row.revenue.toLocaleString()}</td></tr>`).join('');
+    }
+
+    window.onload = loadData;
   </script>
 </body>
 </html>
