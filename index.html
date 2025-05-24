@@ -33,6 +33,18 @@
     .kpi-box.purchases { background-color: #fff3cd; }
     .kpi-box.revenue { background-color: #f8d7da; }
 
+    .kpi-box h3 {
+      margin: 5px 0;
+      font-size: 1.8em;
+      color: #333;
+    }
+
+    .kpi-box p {
+      margin: 0;
+      font-size: 1em;
+      color: #666;
+    }
+
     .tooltip {
       position: absolute;
       top: 0;
@@ -102,6 +114,16 @@
     #supplierFilterDropdown label {
       display: block;
     }
+
+    @media (max-width: 768px) {
+      .chart-row, .table-row {
+        flex-direction: column;
+        height: auto;
+      }
+      .chart-container {
+        margin: 10px 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -167,6 +189,14 @@
       dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
     }
 
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById('supplierFilterDropdown');
+      const button = event.target.closest('button');
+      if (!dropdown.contains(event.target) && button?.textContent !== 'Filter Suppliers') {
+        dropdown.style.display = 'none';
+      }
+    });
+
     function fetchData() {
       const mode = document.getElementById('dateMode').value;
       const params = new URLSearchParams();
@@ -188,16 +218,15 @@
       }
 
       fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?' + params.toString())
-
         .then(res => res.json())
         .then(drawDashboard)
         .catch(err => console.error('Error loading data', err));
     }
 
     function drawDashboard(data) {
-      document.getElementById('totalSales').innerText = '₱' + data.totals.sales;
-      document.getElementById('totalPurchases').innerText = '₱' + data.totals.purchases;
-      document.getElementById('totalRevenue').innerText = '₱' + data.totals.revenue;
+      document.getElementById('totalSales').innerText = parseFloat(data.totals.sales).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
+      document.getElementById('totalPurchases').innerText = parseFloat(data.totals.purchases).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
+      document.getElementById('totalRevenue').innerText = parseFloat(data.totals.revenue).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
 
       suppliers = data.allSuppliers || [];
       buildSupplierFilter();
