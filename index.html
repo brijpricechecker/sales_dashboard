@@ -59,10 +59,8 @@
       align-items: center;
       margin-bottom: 10px;
       flex-wrap: wrap;
-    }
-
-    .filters select, .filters input {
-      margin-right: 10px;
+      position: relative;
+      gap: 10px;
     }
 
     .chart-row {
@@ -106,9 +104,13 @@
       border: 1px solid #ccc;
       padding: 10px;
       background: white;
-      position: absolute;
+      width: 200px;
       z-index: 999;
       display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      position: absolute;
+      top: 40px;
+      left: 0;
     }
 
     #supplierFilterDropdown label {
@@ -120,6 +122,7 @@
         flex-direction: column;
         height: auto;
       }
+
       .chart-container {
         margin: 10px 0;
       }
@@ -138,8 +141,10 @@
     <input type="date" id="startDate" style="display:none">
     <input type="date" id="endDate" style="display:none">
 
-    <button onclick="toggleSupplierDropdown()">Filter Suppliers</button>
-    <div id="supplierFilterDropdown"></div>
+    <div style="position: relative;">
+      <button onclick="toggleSupplierDropdown()">Filter Suppliers</button>
+      <div id="supplierFilterDropdown"></div>
+    </div>
   </div>
 
   <div class="kpi-container">
@@ -175,7 +180,7 @@
     google.charts.load('current', { packages: ['corechart', 'bar'] });
     google.charts.setOnLoadCallback(() => {
       document.addEventListener('DOMContentLoaded', () => {
-        fetchData();
+        initDashboard();
       });
     });
 
@@ -183,8 +188,9 @@
 
     function toggleDateInputs() {
       const mode = document.getElementById('dateMode').value;
-      document.getElementById('startDate').style.display = (mode === 'daily') ? 'inline-block' : 'none';
-      document.getElementById('endDate').style.display = (mode === 'daily') ? 'inline-block' : 'none';
+      const show = (mode === 'daily');
+      document.getElementById('startDate').style.display = show ? 'inline-block' : 'none';
+      document.getElementById('endDate').style.display = show ? 'inline-block' : 'none';
       fetchData();
     }
 
@@ -193,13 +199,24 @@
       dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
     }
 
-    document.addEventListener('click', function (event) {
+    document.addEventListener('click', function(event) {
       const dropdown = document.getElementById('supplierFilterDropdown');
       const button = event.target.closest('button');
       if (!dropdown.contains(event.target) && button?.textContent !== 'Filter Suppliers') {
         dropdown.style.display = 'none';
       }
     });
+
+    function initDashboard() {
+      fetch('https://script.google.com/macros/s/YOUR_DEPLOYED_URL/exec')
+        .then(res => res.json())
+        .then(data => {
+          suppliers = data.allSuppliers || [];
+          buildSupplierFilter();
+          drawDashboard(data);
+        })
+        .catch(err => console.error('Init load error', err));
+    }
 
     function fetchData() {
       const mode = document.getElementById('dateMode').value;
@@ -223,14 +240,37 @@
 
       fetch('https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?' + params.toString())
         .then(res => res.json())
-        .then(data => {
-          console.log("Received data:", data);
-          drawDashboard(data);
-        })
-        .catch(err => {
-          console.error('Error loading data', err);
-          alert('Failed to load data. Check console for details.');
+        .then(drawDashboard)
+        .catch(err => console.error('Error loading data', err));
+    }
+
+    function buildSupplierFilter() {
+      const container = document.getElementById('supplierFilterDropdown');
+      container.innerHTML = '';
+
+      const selectAllBox = document.createElement('label');
+      selectAllBox.innerHTML = `<input type="checkbox" id="selectAllSuppliers" checked> Select All`;
+      container.appendChild(selectAllBox);
+
+      document.getElementById('selectAllSuppliers').addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        container.querySelectorAll('input[type=checkbox]').forEach(cb => {
+          cb.checked = checked;
         });
+        fetchData();
+      });
+
+      suppliers.forEach(supplier => {
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${supplier}" checked> ${supplier}`;
+        container.appendChild(label);
+      });
+
+      container.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        if (cb.id !== 'selectAllSuppliers') {
+          cb.addEventListener('change', () => fetchData());
+        }
+      });
     }
 
     function drawDashboard(data) {
@@ -238,48 +278,11 @@
       document.getElementById('totalPurchases').innerText = parseFloat(data.totals.purchases).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
       document.getElementById('totalRevenue').innerText = parseFloat(data.totals.revenue).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
 
-      suppliers = data.allSuppliers || [];
-      buildSupplierFilter();
-
       drawLineChart(data.timeline);
       drawColumnChart(data.monthly);
       drawDonutChart(data.revenueBySupplier);
       drawTable('topSalesTable', 'Top 10 Sales', data.topSales, ['name', 'quantity', 'sales']);
       drawTable('topRevenueTable', 'Top 10 Revenue', data.topRevenue, ['name', 'quantity', 'revenue']);
-    }
-
-    function buildSupplierFilter() {
-      const container = document.getElementById('supplierFilterDropdown');
-      container.innerHTML = '';
-
-      const selectAll = document.createElement('label');
-      selectAll.innerHTML = `<input type="checkbox" id="selectAllSuppliers" checked> Select All`;
-      container.appendChild(selectAll);
-
-      setTimeout(() => {
-        const selectAllBox = document.getElementById('selectAllSuppliers');
-        if (selectAllBox) {
-          selectAllBox.addEventListener('change', (e) => {
-            const checked = e.target.checked;
-            container.querySelectorAll('input[type=checkbox]').forEach(cb => {
-              cb.checked = checked;
-            });
-            fetchData();
-          });
-        }
-
-        suppliers.forEach(supplier => {
-          const label = document.createElement('label');
-          label.innerHTML = `<input type="checkbox" value="${supplier}" checked> ${supplier}`;
-          container.appendChild(label);
-        });
-
-        container.querySelectorAll('input[type=checkbox]').forEach(cb => {
-          if (cb.id !== 'selectAllSuppliers') {
-            cb.addEventListener('change', () => fetchData());
-          }
-        });
-      }, 10);
     }
 
     function drawLineChart(timeline) {
@@ -297,7 +300,7 @@
         curveType: 'function',
         legend: { position: 'bottom' },
         tooltip: { isHtml: true },
-        height: 300
+        height: '100%'
       };
       const chart = new google.visualization.LineChart(document.getElementById('lineChart'));
       chart.draw(data, options);
@@ -317,7 +320,7 @@
         title: 'Monthly Sales vs Purchases',
         legend: { position: 'bottom' },
         isStacked: false,
-        height: 300
+        height: '100%'
       };
       const chart = new google.visualization.ColumnChart(document.getElementById('columnChart'));
       chart.draw(data, options);
@@ -333,7 +336,7 @@
         title: 'Revenue by Supplier',
         pieHole: 0.4,
         legend: { position: 'right' },
-        height: 300
+        height: '100%'
       };
       const chart = new google.visualization.PieChart(document.getElementById('donutChart'));
       chart.draw(data, options);
