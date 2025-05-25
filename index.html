@@ -70,6 +70,14 @@
     .tables-row {
       display: flex;
       height: 40vh;
+      gap: 10px;
+    }
+
+    .tables-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     table {
@@ -130,13 +138,25 @@
   </div>
 
   <div class="tables-row">
-    <div class="chart">
-      <h4>Top 10 Sales</h4>
-      <table id="topSalesTable"><thead></thead><tbody></tbody></table>
+    <div class="tables-column">
+      <div class="chart">
+        <h4>Top 10 Sales</h4>
+        <table id="topSalesTable"><thead></thead><tbody></tbody></table>
+      </div>
+      <div class="chart">
+        <h4>Total Sales</h4>
+        <table id="totalSalesTable"><thead></thead><tbody></tbody></table>
+      </div>
     </div>
-    <div class="chart">
-      <h4>Top 10 Revenue</h4>
-      <table id="topRevenueTable"><thead></thead><tbody></tbody></table>
+    <div class="tables-column">
+      <div class="chart">
+        <h4>Top 10 Revenue</h4>
+        <table id="topRevenueTable"><thead></thead><tbody></tbody></table>
+      </div>
+      <div class="chart">
+        <h4>Total Purchases</h4>
+        <table id="totalPurchasesTable"><thead></thead><tbody></tbody></table>
+      </div>
     </div>
   </div>
 
@@ -181,9 +201,11 @@
 
         drawLineChart(data.timeline);
         drawDonutChart(data.revenueBySupplier);
-        drawClusteredColumnChart(data.timeline);
+        drawSalesVsPurchasesLineChart(data.timeline);
         drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
         drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
+        drawTable("totalSalesTable", data.totalSales, ["name", "quantity", "sales"]);
+        drawTable("totalPurchasesTable", data.totalPurchases, ["name", "quantity", "purchases"]);
       }
 
       function updateSelectOptions(suppliers) {
@@ -209,12 +231,31 @@
           data.addRow([date, val.sales, val.revenue]);
         });
 
-        const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
+        const chart = new google.visualization.LineChart(document.getElementById("timelineChart"));
         chart.draw(data, {
           title: "Sales vs Revenue Over Time",
           height: 300,
           legend: { position: "top" },
-          hAxis: { slantedText: true },
+          hAxis: { slantedText: true }
+        });
+      }
+
+      function drawSalesVsPurchasesLineChart(dataObj) {
+        const data = new google.visualization.DataTable();
+        data.addColumn("string", "Date");
+        data.addColumn("number", "Sales");
+        data.addColumn("number", "Purchases");
+
+        Object.entries(dataObj).forEach(([date, val]) => {
+          data.addRow([date, val.sales, val.purchases || 0]);
+        });
+
+        const chart = new google.visualization.LineChart(document.getElementById("salesVsPurchasesChart"));
+        chart.draw(data, {
+          title: "Sales vs Purchases Over Time",
+          height: 300,
+          legend: { position: "top" },
+          hAxis: { slantedText: true }
         });
       }
 
@@ -229,26 +270,6 @@
           title: "Revenue by Supplier",
           pieHole: 0.4,
           height: 300
-        });
-      }
-
-      function drawClusteredColumnChart(dataObj) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Date");
-        data.addColumn("number", "Sales");
-        data.addColumn("number", "Purchases");
-
-        Object.entries(dataObj).forEach(([date, val]) => {
-          data.addRow([date, val.sales, val.purchases || 0]);
-        });
-
-        const chart = new google.visualization.ColumnChart(document.getElementById("salesVsPurchasesChart"));
-        chart.draw(data, {
-          title: "Sales vs Purchases Over Time",
-          height: 300,
-          legend: { position: "top" },
-          isStacked: false,
-          hAxis: { slantedText: true }
         });
       }
 
@@ -288,3 +309,4 @@
   </script>
 </body>
 </html>
+
