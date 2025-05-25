@@ -1,235 +1,237 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script>
-      const webUrl = "https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec"; // Replace with your actual script ID
-
-      google.charts.load("current", { packages: ["corechart"] });
-      google.charts.setOnLoadCallback(loadData);
-
-      async function loadData() {
-        const view = document.getElementById("view").value;
-        const startDate = document.getElementById("startDate").value;
-        const endDate = document.getElementById("endDate").value;
-        const supplierOptions = Array.from(document.getElementById("supplier").options);
-        const selectedSuppliers = supplierOptions.filter(o => o.selected && o.value !== "All").map(o => o.value);
-        const supplierParam = selectedSuppliers.length > 0 ? `&supplier=${selectedSuppliers.join(",")}` : "";
-
-        const res = await fetch(`${webUrl}?view=${view}&startDate=${startDate}&endDate=${endDate}${supplierParam}`);
-        const data = await res.json();
-
-        drawKPIs(data.totals);
-        drawTopTables(data.topSales, data.topRevenue);
-        drawTimelineChart(data.timeline);
-        drawSupplierChart(data.revenueBySupplier);
-        drawClusteredChart(data.summary);
-      }
-
-      function drawKPIs(totals) {
-        document.getElementById("total_sales").innerText = totals.sales.toFixed(2);
-        document.getElementById("total_purchases").innerText = totals.purchases.toFixed(2);
-        document.getElementById("total_revenue").innerText = totals.revenue.toFixed(2);
-      }
-
-      function drawTopTables(topSales, topRevenue) {
-        const salesTable = document.getElementById("top_sales");
-        const revenueTable = document.getElementById("top_revenue");
-
-        salesTable.innerHTML = "<tr><th>Item</th><th>Sales</th></tr>";
-        revenueTable.innerHTML = "<tr><th>Item</th><th>Revenue</th></tr>";
-
-        topSales.forEach(item => {
-          salesTable.innerHTML += `<tr><td>${item.name}</td><td>${item.sales.toFixed(2)}</td></tr>`;
-        });
-
-        topRevenue.forEach(item => {
-          revenueTable.innerHTML += `<tr><td>${item.name}</td><td>${item.revenue.toFixed(2)}</td></tr>`;
-        });
-      }
-
-      function drawTimelineChart(timeline) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Date");
-        data.addColumn("number", "Sales");
-        data.addColumn("number", "Revenue");
-
-        const sortedDates = Object.keys(timeline).sort();
-        sortedDates.forEach(date => {
-          const t = timeline[date];
-          data.addRow([date, t.sales, t.revenue]);
-        });
-
-        const options = {
-          title: "Sales & Revenue Over Time",
-          curveType: "function",
-          legend: { position: "bottom" },
-          colors: ["#3366CC", "#DC3912"]
-        };
-
-        const chart = new google.visualization.LineChart(document.getElementById("timeline_chart"));
-        chart.draw(data, options);
-      }
-
-      function drawSupplierChart(revenueBySupplier) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Supplier");
-        data.addColumn("number", "Revenue");
-
-        revenueBySupplier.forEach(item => {
-          data.addRow([item.supplier, item.revenue]);
-        });
-
-        const options = {
-          title: "Revenue by Supplier",
-          pieHole: 0.4,
-        };
-
-        const chart = new google.visualization.PieChart(document.getElementById("supplier_chart"));
-        chart.draw(data, options);
-      }
-
-      function drawClusteredChart(summary) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Date");
-        data.addColumn("number", "Sales");
-        data.addColumn("number", "Purchases");
-
-        const rows = summary.sales.map(sale => {
-          const purchase = summary.purchases.find(p => p.date === sale.date);
-          return [sale.date, sale.amount, purchase ? purchase.amount : 0];
-        });
-
-        data.addRows(rows);
-
-        const options = {
-          title: "Sales vs Purchases",
-          chartArea: { width: "70%" },
-          hAxis: { title: "Date" },
-          vAxis: { title: "Amount" },
-          bar: { groupWidth: "60%" },
-          legend: { position: "bottom" },
-          colors: ["#3366CC", "#FF9900"]
-        };
-
-        const chart = new google.visualization.ColumnChart(document.getElementById("clustered_chart"));
-        chart.draw(data, options);
-      }
-
-      function selectAllSuppliers(checked) {
-        const supplierSelect = document.getElementById("supplier");
-        Array.from(supplierSelect.options).forEach(option => {
-          option.selected = checked;
-        });
-        loadData();
-      }
-    </script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #f7f7f7;
-        padding: 20px;
-      }
-      .filter-section {
-        margin-bottom: 20px;
-      }
-      .chart-row, .table-row, .kpi-row {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-      .chart-box, .table-box, .kpi-box {
-        flex: 1;
-        background: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        height: 400px;
-        overflow: auto;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th, td {
-        padding: 8px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-      }
-      .kpi-box h2 {
-        font-size: 1rem;
-        margin-bottom: 10px;
-      }
-      .kpi-box .value {
-        font-size: 1.5rem;
-        color: #2c3e50;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="filter-section">
-      <label for="view">View:</label>
-      <select id="view" onchange="loadData()">
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="monthly" selected>Monthly</option>
-      </select>
-
-      <label for="startDate">Start Date:</label>
-      <input type="date" id="startDate" onchange="loadData()" />
-
-      <label for="endDate">End Date:</label>
-      <input type="date" id="endDate" onchange="loadData()" />
-
-      <label for="supplier">Suppliers:</label>
-      <select id="supplier" multiple size="4" onchange="loadData()">
-        <option value="All">Select All</option>
-        <option value="ALEMART">ALEMART</option>
-        <option value="CHIPS">CHIPS</option>
-        <option value="CIG">CIG</option>
-        <option value="CLOSET">CLOSET</option>
-        <option value="Blank">Blank</option>
-      </select>
-      <label><input type="checkbox" onclick="selectAllSuppliers(this.checked)"> Select All</label>
+<head>
+  <title>Inventory Dashboard</title>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .kpis {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .kpi-box {
+      flex: 1;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .charts {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .chart {
+      flex: 1;
+      height: 400px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .tables {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .table-box {
+      flex: 1;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      max-height: 400px;
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    table th {
+      background-color: #f0f0f0;
+    }
+    #supplierFilterPopup {
+      display: none;
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Inventory Dashboard</h1>
+  <div class="kpis">
+    <div class="kpi-box" style="background-color: #e3f2fd;">
+      <h2 id="salesKPI">0</h2>
+      <p>Total Sales</p>
     </div>
-
-    <div class="kpi-row">
-      <div class="kpi-box">
-        <h2>Total Sales</h2>
-        <div class="value" id="total_sales">0.00</div>
-      </div>
-      <div class="kpi-box">
-        <h2>Total Purchases</h2>
-        <div class="value" id="total_purchases">0.00</div>
-      </div>
-      <div class="kpi-box">
-        <h2>Total Revenue</h2>
-        <div class="value" id="total_revenue">0.00</div>
-      </div>
+    <div class="kpi-box" style="background-color: #e8f5e9;">
+      <h2 id="purchasesKPI">0</h2>
+      <p>Total Purchases</p>
     </div>
-
-    <div class="chart-row">
-      <div class="chart-box" id="timeline_chart"></div>
-      <div class="chart-box" id="supplier_chart"></div>
-      <div class="chart-box" id="clustered_chart"></div>
+    <div class="kpi-box" style="background-color: #fff3e0;">
+      <h2 id="revenueKPI">0</h2>
+      <p>Total Revenue</p>
     </div>
+  </div>
 
-    <div class="table-row">
-      <div class="table-box">
-        <h3>Top Sales</h3>
-        <table id="top_sales">
-          <tr><th>Item</th><th>Sales</th></tr>
-        </table>
-      </div>
-      <div class="table-box">
-        <h3>Top Revenue</h3>
-        <table id="top_revenue">
-          <tr><th>Item</th><th>Revenue</th></tr>
-        </table>
-      </div>
+  <div style="margin-bottom: 10px;">
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate">
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate">
+    <button onclick="toggleSupplierPopup()">Filter Suppliers</button>
+  </div>
+
+  <div id="supplierFilterPopup"></div>
+
+  <div class="charts">
+    <div id="timelineChart" class="chart"></div>
+    <div id="supplierChart" class="chart"></div>
+    <div id="salesPurchaseChart" class="chart"></div>
+  </div>
+
+  <div class="tables">
+    <div class="table-box">
+      <h3>Top 10 Sales</h3>
+      <table id="topSalesTable">
+        <thead><tr><th>Item</th><th>Quantity</th><th>Sales</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
-  </body>
+    <div class="table-box">
+      <h3>Top 10 Revenue</h3>
+      <table id="topRevenueTable">
+        <thead><tr><th>Item</th><th>Quantity</th><th>Revenue</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="table-box">
+      <h3>Sales & Purchases by Supplier</h3>
+      <table id="supplierSummaryTable">
+        <thead><tr><th>Supplier</th><th>Total Sales</th><th>Total Purchases</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    google.charts.load('current', {'packages':['corechart']});
+
+    let allSuppliers = [];
+    let selectedSuppliers = new Set();
+
+    function toggleSupplierPopup() {
+      const popup = document.getElementById("supplierFilterPopup");
+      popup.style.display = popup.style.display === "none" ? "block" : "none";
+    }
+
+    function renderSupplierFilter(suppliers) {
+      const popup = document.getElementById("supplierFilterPopup");
+      popup.innerHTML = '<label><input type="checkbox" id="selectAllSuppliers" checked> Select All</label><br>';
+      suppliers.forEach(supplier => {
+        popup.innerHTML += `<label><input type="checkbox" class="supplierCheckbox" value="${supplier}" checked> ${supplier}</label><br>`;
+      });
+      document.querySelectorAll('.supplierCheckbox').forEach(cb => cb.addEventListener('change', onSupplierChange));
+      document.getElementById('selectAllSuppliers').addEventListener('change', function () {
+        const checked = this.checked;
+        document.querySelectorAll('.supplierCheckbox').forEach(cb => cb.checked = checked);
+        onSupplierChange();
+      });
+    }
+
+    function onSupplierChange() {
+      selectedSuppliers = new Set(
+        Array.from(document.querySelectorAll('.supplierCheckbox'))
+          .filter(cb => cb.checked)
+          .map(cb => cb.value)
+      );
+      fetchData();
+    }
+
+    function fetchData() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      const supplierParam = Array.from(selectedSuppliers).join(',');
+
+      const url = `https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec?startDate=${start}&endDate=${end}&supplier=${supplierParam}`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById("salesKPI").textContent = data.totals.sales;
+          document.getElementById("purchasesKPI").textContent = data.totals.purchases;
+          document.getElementById("revenueKPI").textContent = data.totals.revenue;
+
+          drawTimelineChart(data.timeline);
+          drawSupplierChart(data.revenueBySupplier);
+          drawSalesPurchaseChart(data.monthly);
+          renderTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
+          renderTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
+          renderTable('supplierSummaryTable', data.revenueBySupplier, ['supplier', 'sales', 'purchases']);
+
+          allSuppliers = data.allSuppliers;
+          renderSupplierFilter(allSuppliers);
+        });
+    }
+
+    function drawTimelineChart(timeline) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Date');
+      data.addColumn('number', 'Sales');
+      data.addColumn('number', 'Revenue');
+      const sortedKeys = Object.keys(timeline).sort();
+      sortedKeys.forEach(key => {
+        data.addRow([key, timeline[key].sales, timeline[key].revenue]);
+      });
+      const chart = new google.visualization.LineChart(document.getElementById('timelineChart'));
+      chart.draw(data, { title: 'Sales & Revenue Over Time' });
+    }
+
+    function drawSupplierChart(revenueBySupplier) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Supplier');
+      data.addColumn('number', 'Revenue');
+      revenueBySupplier.forEach(entry => data.addRow([entry.supplier, entry.revenue]));
+      const chart = new google.visualization.PieChart(document.getElementById('supplierChart'));
+      chart.draw(data, { title: 'Revenue by Supplier' });
+    }
+
+    function drawSalesPurchaseChart(monthly) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Month');
+      data.addColumn('number', 'Sales');
+      data.addColumn('number', 'Purchases');
+      const sortedKeys = Object.keys(monthly).sort();
+      sortedKeys.forEach(key => {
+        data.addRow([key, monthly[key].sales, monthly[key].purchases]);
+      });
+      const chart = new google.visualization.ColumnChart(document.getElementById('salesPurchaseChart'));
+      chart.draw(data, { title: 'Sales vs Purchases (Monthly)', isStacked: false });
+    }
+
+    function renderTable(id, rows, keys) {
+      const tbody = document.getElementById(id).querySelector('tbody');
+      tbody.innerHTML = rows.map(row => `<tr>${keys.map(k => `<td>${row[k]}</td>`).join('')}</tr>`).join('');
+    }
+
+    document.getElementById('startDate').addEventListener('change', fetchData);
+    document.getElementById('endDate').addEventListener('change', fetchData);
+
+    window.onload = fetchData;
+  </script>
+</body>
 </html>
-
