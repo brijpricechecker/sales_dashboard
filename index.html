@@ -169,27 +169,27 @@ params.append("supplier", selected.join(","));
 
 fetch(`${deployedWebAppUrl}?${params.toString()}`)
 .then(res => res.json())
-.then(drawDashboard);
+.then(drawDashboard)
+.catch(err => console.error("Fetch error:", err));
 }
 
 function drawDashboard(data) {
-const totals = data.totals || {};
-document.getElementById("salesKPI").textContent = totals.sales || 0;
-document.getElementById("purchasesKPI").textContent = totals.purchases || 0;
-document.getElementById("revenueKPI").textContent = totals.revenue || 0;
+document.getElementById("salesKPI").textContent = data.totals.sales.toFixed(2);
+document.getElementById("purchasesKPI").textContent = data.totals.purchases.toFixed(2);
+document.getElementById("revenueKPI").textContent = data.totals.revenue.toFixed(2);
 
-updateSelectOptions(data.allSuppliers || []);
+updateSelectOptions(data.allSuppliers);
 
-drawLineChart(data.timeline || {});
-drawDonutChart(data.revenueBySupplier || []);
-drawClusteredColumnChart(data.timeline || {});
-drawTable("topSalesTable", data.topSales || [], ["name", "quantity", "sales"]);
-drawTable("topRevenueTable", data.topRevenue || [], ["name", "quantity", "revenue"]);
+drawLineChart(data.timeline);
+drawDonutChart(data.revenueBySupplier);
+drawClusteredColumnChart(data.timeline);
+drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
+drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
 }
 
 function updateSelectOptions(suppliers) {
-const existing = Array.from(supplierFilter.options).map(o => o.value);
-if (existing.length === suppliers.length) return;
+const current = Array.from(supplierFilter.options).map(o => o.value);
+if (current.length === suppliers.length) return;
 
 supplierFilter.innerHTML = "";
 suppliers.forEach(s => {
@@ -200,15 +200,14 @@ supplierFilter.appendChild(opt);
 });
 }
 
-function drawLineChart(dataObj) {
+function drawLineChart(timelineData) {
 const data = new google.visualization.DataTable();
 data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Revenue");
 
-const sortedEntries = Object.entries(dataObj).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-sortedEntries.forEach(([label, val]) => {
-data.addRow([label, val.sales || 0, val.revenue || 0]);
+Object.entries(timelineData).forEach(([date, val]) => {
+data.addRow([date, val.sales, val.revenue]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
@@ -234,15 +233,14 @@ height: 300
 });
 }
 
-function drawClusteredColumnChart(dataObj) {
+function drawClusteredColumnChart(timelineData) {
 const data = new google.visualization.DataTable();
 data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Purchases");
 
-const sortedEntries = Object.entries(dataObj).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-sortedEntries.forEach(([label, val]) => {
-data.addRow([label, val.sales || 0, val.purchases || 0]);
+Object.entries(timelineData).forEach(([date, val]) => {
+data.addRow([date, val.sales, val.purchases || 0]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("salesVsPurchasesChart"));
@@ -291,4 +289,5 @@ fetchData(); // Initial load
 </script>
 </body>
 </html>
+
 
