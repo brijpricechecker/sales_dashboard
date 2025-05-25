@@ -71,7 +71,6 @@
     <strong>Total Revenue:</strong> <span id="totalRevenue">₱0.00</span>
   </div>
 
-  <!-- Placeholder containers for charts and tables -->
   <div id="timelineChart"></div>
   <div id="monthlyChart"></div>
   <div id="revenueBySupplierChart"></div>
@@ -80,7 +79,7 @@
   <div id="supplierSummary"></div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Update with your deployment URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Your actual backend URL
 
     function toggleDropdown() {
       const dropdown = document.getElementById('supplierDropdown');
@@ -95,7 +94,7 @@
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.value = supplier;
-        checkbox.checked = selected.includes(supplier);
+        checkbox.checked = selected.length === 0 || selected.includes(supplier);
         label.appendChild(checkbox);
         label.appendChild(document.createTextNode(" " + supplier));
         dropdown.appendChild(label);
@@ -142,7 +141,8 @@
           populateTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
           populateTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
           populateTable('supplierSummary', data.supplierSummary, ['supplier', 'sales', 'purchases']);
-          populateSupplierFilter(data.allSuppliers, selectedSuppliers);
+          populateSupplierFilter(data.allSuppliers); // Select All by default
+          selectAllSuppliers(); // Set all as selected
         })
         .catch(err => {
           console.error('Error loading data:', err);
@@ -171,7 +171,7 @@
       container.innerHTML = html;
     }
 
-    // Placeholder functions for charts
+    // Placeholder functions for visual charts
     function drawTimeline(data) {
       document.getElementById('timelineChart').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
     }
@@ -184,11 +184,10 @@
       document.getElementById('revenueBySupplierChart').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
     }
 
-    // Auto-load dashboard on page load with default dates
+    // Initialize with default dates and load dashboard
     window.onload = function () {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('startDate').value = today;
-      document.getElementById('endDate').value = today;
+      document.getElementById('startDate').value = '2025-01-01';
+      document.getElementById('endDate').value = new Date().toISOString().split('T')[0];
       loadDashboard();
     }
   </script>
