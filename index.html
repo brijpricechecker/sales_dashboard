@@ -20,6 +20,7 @@
   <label>Suppliers:</label>
   <select id="supplierFilter" multiple></select>
   <button onclick="loadDashboard()">Load Dashboard</button>
+  <button onclick="selectAllSuppliers()">Select All</button>
 
   <div class="section">
     <div class="kpi-box" id="kpiSales">Sales: ₱0.00</div>
@@ -29,6 +30,11 @@
 
   <div class="section">
     <div id="timelineChart" style="width: 100%; height: 400px;"></div>
+  </div>
+
+  <div class="section">
+    <div id="salesPurchasesChart" style="width: 100%; height: 400px;"></div>
+    <div id="revenueBySupplierChart" style="width: 100%; height: 400px;"></div>
   </div>
 
   <div class="section">
@@ -63,6 +69,8 @@
 
           updateKPIs(data.totals);
           drawTimeline(data.timeline);
+          drawSalesPurchases(data.monthly);
+          drawRevenueBySupplier(data.revenueBySupplier);
           populateTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
           populateTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
           populateTable('supplierSummary', data.supplierSummary, ['supplier', 'sales', 'purchases']);
@@ -88,14 +96,47 @@
           data.addRow([d.date, parseFloat(d.sales.replace(/,/g, '')), parseFloat(d.revenue.replace(/,/g, ''))]);
         });
 
-        const options = {
+        const chart = new google.visualization.LineChart(document.getElementById('timelineChart'));
+        chart.draw(data, {
           title: 'Sales and Revenue Over Time',
           curveType: 'function',
           legend: { position: 'bottom' }
-        };
+        });
+      });
+    }
 
-        const chart = new google.visualization.LineChart(document.getElementById('timelineChart'));
-        chart.draw(data, options);
+    function drawSalesPurchases(monthly) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Month');
+      data.addColumn('number', 'Sales');
+      data.addColumn('number', 'Purchases');
+
+      Object.entries(monthly).forEach(([month, val]) => {
+        data.addRow([month, val.sales, val.purchases]);
+      });
+
+      const chart = new google.visualization.ColumnChart(document.getElementById('salesPurchasesChart'));
+      chart.draw(data, {
+        title: 'Monthly Sales vs Purchases',
+        bars: 'vertical',
+        legend: { position: 'top' },
+        height: 400
+      });
+    }
+
+    function drawRevenueBySupplier(dataList) {
+      const data = new google.visualization.DataTable();
+      data.addColumn('string', 'Supplier');
+      data.addColumn('number', 'Revenue');
+
+      dataList.forEach(d => {
+        data.addRow([d.supplier, parseFloat(d.revenue.replace(/,/g, ''))]);
+      });
+
+      const chart = new google.visualization.PieChart(document.getElementById('revenueBySupplierChart'));
+      chart.draw(data, {
+        title: 'Revenue by Supplier',
+        is3D: true
       });
     }
 
@@ -115,9 +156,6 @@
 
     function populateSupplierFilter(suppliers, selected = []) {
       const select = document.getElementById('supplierFilter');
-      const current = new Set(Array.from(select.options).map(o => o.value));
-      if (current.size === suppliers.length) return; // avoid reloading
-
       select.innerHTML = '';
       suppliers.forEach(s => {
         const option = document.createElement('option');
@@ -128,7 +166,11 @@
       });
     }
 
-    // Auto-load today's date range on first open
+    function selectAllSuppliers() {
+      const select = document.getElementById('supplierFilter');
+      Array.from(select.options).forEach(opt => opt.selected = true);
+    }
+
     window.onload = () => {
       const today = new Date();
       const weekAgo = new Date();
