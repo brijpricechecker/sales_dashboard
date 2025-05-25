@@ -137,14 +137,52 @@
 
           updateKPIs(data.totals);
           populateSupplierFilter(data.allSuppliers, selectedSuppliers);
+  const dropdown = document.getElementById('supplierDropdown');
+  dropdown.innerHTML = '';
+  suppliers.forEach(supplier => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = supplier;
+    checkbox.checked = selected.includes(supplier);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(" " + supplier));
+    dropdown.appendChild(label);
+  });
+}
 
-          // You can hook in your chart and table rendering functions here:
-          // drawTimeline(data.timeline);
-          // drawSalesPurchases(data.monthly);
-          // drawRevenueBySupplier(data.revenueBySupplier);
-          // populateTable('topSalesTable', data.topSales, ...);
-          // etc.
-        })
+function getSelectedSuppliers() {
+  const checkboxes = document.querySelectorAll('#supplierDropdown input[type="checkbox"]');
+  return Array.from(checkboxes)
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+}
+
+function selectAllSuppliers() {
+  document.querySelectorAll('#supplierDropdown input[type="checkbox"]').forEach(cb => cb.checked = true);
+}
+
+function loadDashboard() {
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  const selectedSuppliers = getSelectedSuppliers();
+
+  const url = `${scriptURL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(selectedSuppliers.join(','))}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) return alert('Error: ' + data.error);
+
+      updateKPIs(data.totals);
+      drawTimeline(data.timeline);
+      drawSalesPurchases(data.monthly);
+      drawRevenueBySupplier(data.revenueBySupplier);
+      populateTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
+      populateTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
+      populateTable('supplierSummary', data.supplierSummary, ['supplier', 'sales', 'purchases']);
+      populateSupplierFilter(data.allSuppliers, selectedSuppliers);
+    })
         .catch(err => {
           console.error('Error loading data:', err);
           alert('Failed to load dashboard data.');
