@@ -4,7 +4,7 @@
     <base target="_top" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script>
-      const webUrl = "https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec"; // <-- Replace with your actual script ID
+      const webUrl = "https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec"; // Replace with your actual script ID
 
       google.charts.load("current", { packages: ["corechart"] });
       google.charts.setOnLoadCallback(loadData);
@@ -14,15 +14,39 @@
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
         const supplierOptions = Array.from(document.getElementById("supplier").options);
-        const selectedSuppliers = supplierOptions.filter(o => o.selected).map(o => o.value).filter(v => v !== "All");
+        const selectedSuppliers = supplierOptions.filter(o => o.selected && o.value !== "All").map(o => o.value);
         const supplierParam = selectedSuppliers.length > 0 ? `&supplier=${selectedSuppliers.join(",")}` : "";
 
         const res = await fetch(`${webUrl}?view=${view}&startDate=${startDate}&endDate=${endDate}${supplierParam}`);
         const data = await res.json();
 
+        drawKPIs(data.totals);
+        drawTopTables(data.topSales, data.topRevenue);
         drawTimelineChart(data.timeline);
         drawSupplierChart(data.revenueBySupplier);
-        drawClusteredChart(data.summary); // NEW clustered chart
+        drawClusteredChart(data.summary);
+      }
+
+      function drawKPIs(totals) {
+        document.getElementById("total_sales").innerText = totals.sales.toFixed(2);
+        document.getElementById("total_purchases").innerText = totals.purchases.toFixed(2);
+        document.getElementById("total_revenue").innerText = totals.revenue.toFixed(2);
+      }
+
+      function drawTopTables(topSales, topRevenue) {
+        const salesTable = document.getElementById("top_sales");
+        const revenueTable = document.getElementById("top_revenue");
+
+        salesTable.innerHTML = "<tr><th>Item</th><th>Sales</th></tr>";
+        revenueTable.innerHTML = "<tr><th>Item</th><th>Revenue</th></tr>";
+
+        topSales.forEach(item => {
+          salesTable.innerHTML += `<tr><td>${item.name}</td><td>${item.sales.toFixed(2)}</td></tr>`;
+        });
+
+        topRevenue.forEach(item => {
+          revenueTable.innerHTML += `<tr><td>${item.name}</td><td>${item.revenue.toFixed(2)}</td></tr>`;
+        });
       }
 
       function drawTimelineChart(timeline) {
@@ -38,7 +62,7 @@
         });
 
         const options = {
-          title: "Sales vs Revenue Over Time",
+          title: "Sales & Revenue Over Time",
           curveType: "function",
           legend: { position: "bottom" },
           colors: ["#3366CC", "#DC3912"]
@@ -80,19 +104,13 @@
         data.addRows(rows);
 
         const options = {
-          title: "Sales vs Purchases Over Time",
+          title: "Sales vs Purchases",
           chartArea: { width: "70%" },
-          hAxis: {
-            title: "Date",
-            minValue: 0,
-          },
-          vAxis: {
-            title: "Amount",
-          },
-          legend: { position: "bottom" },
-          colors: ["#3366CC", "#FF9900"],
+          hAxis: { title: "Date" },
+          vAxis: { title: "Amount" },
           bar: { groupWidth: "60%" },
-          isStacked: false,
+          legend: { position: "bottom" },
+          colors: ["#3366CC", "#FF9900"]
         };
 
         const chart = new google.visualization.ColumnChart(document.getElementById("clustered_chart"));
@@ -110,40 +128,59 @@
     <style>
       body {
         font-family: Arial, sans-serif;
-        padding: 10px;
-        background: #f6f6f6;
+        background: #f7f7f7;
+        padding: 20px;
       }
       .filter-section {
         margin-bottom: 20px;
       }
-      .chart-row {
+      .chart-row, .table-row, .kpi-row {
         display: flex;
         flex-wrap: nowrap;
         gap: 10px;
+        margin-bottom: 20px;
       }
-      .chart-box {
-        width: 33%;
-        height: 400px;
+      .chart-box, .table-box, .kpi-box {
+        flex: 1;
         background: white;
-        padding: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 15px;
         border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: 400px;
+        overflow: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      .kpi-box h2 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+      }
+      .kpi-box .value {
+        font-size: 1.5rem;
+        color: #2c3e50;
       }
     </style>
   </head>
   <body>
     <div class="filter-section">
-      <label for="view">Date View:</label>
+      <label for="view">View:</label>
       <select id="view" onchange="loadData()">
         <option value="daily">Daily</option>
         <option value="weekly">Weekly</option>
         <option value="monthly" selected>Monthly</option>
       </select>
 
-      <label for="startDate">From:</label>
+      <label for="startDate">Start Date:</label>
       <input type="date" id="startDate" onchange="loadData()" />
 
-      <label for="endDate">To:</label>
+      <label for="endDate">End Date:</label>
       <input type="date" id="endDate" onchange="loadData()" />
 
       <label for="supplier">Suppliers:</label>
@@ -154,9 +191,23 @@
         <option value="CIG">CIG</option>
         <option value="CLOSET">CLOSET</option>
         <option value="Blank">Blank</option>
-        <!-- Add more dynamically if needed -->
       </select>
-      <label><input type="checkbox" onclick="selectAllSuppliers(this.checked)" /> Select All</label>
+      <label><input type="checkbox" onclick="selectAllSuppliers(this.checked)"> Select All</label>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-box">
+        <h2>Total Sales</h2>
+        <div class="value" id="total_sales">0.00</div>
+      </div>
+      <div class="kpi-box">
+        <h2>Total Purchases</h2>
+        <div class="value" id="total_purchases">0.00</div>
+      </div>
+      <div class="kpi-box">
+        <h2>Total Revenue</h2>
+        <div class="value" id="total_revenue">0.00</div>
+      </div>
     </div>
 
     <div class="chart-row">
@@ -164,5 +215,21 @@
       <div class="chart-box" id="supplier_chart"></div>
       <div class="chart-box" id="clustered_chart"></div>
     </div>
+
+    <div class="table-row">
+      <div class="table-box">
+        <h3>Top Sales</h3>
+        <table id="top_sales">
+          <tr><th>Item</th><th>Sales</th></tr>
+        </table>
+      </div>
+      <div class="table-box">
+        <h3>Top Revenue</h3>
+        <table id="top_revenue">
+          <tr><th>Item</th><th>Revenue</th></tr>
+        </table>
+      </div>
+    </div>
   </body>
 </html>
+
