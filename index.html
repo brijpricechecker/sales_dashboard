@@ -45,6 +45,7 @@ white-space: nowrap;
 .kpi:hover .tooltip {
 display: block;
 }
+
 .controls {
 display: flex;
 align-items: center;
@@ -52,21 +53,25 @@ gap: 10px;
 margin-bottom: 10px;
 flex-wrap: wrap;
 }
+
 .charts-row {
 display: flex;
 height: 40vh;
 gap: 10px;
 }
+
 .chart {
 flex: 1;
 background: white;
 padding: 10px;
 border-radius: 10px;
 }
+
 .tables-row {
 display: flex;
 height: 40vh;
 }
+
 table {
 width: 100%;
 border-collapse: collapse;
@@ -82,10 +87,12 @@ td, th {
 padding: 6px;
 text-align: left;
 }
+
 #supplierFilter {
 width: 200px;
 height: 100px;
 }
+
 #dateInputs {
 display: none;
 }
@@ -166,17 +173,18 @@ fetch(`${deployedWebAppUrl}?${params.toString()}`)
 }
 
 function drawDashboard(data) {
-document.getElementById("salesKPI").textContent = data.totals.sales;
-document.getElementById("purchasesKPI").textContent = data.totals.purchases;
-document.getElementById("revenueKPI").textContent = data.totals.revenue;
+const totals = data.totals || {};
+document.getElementById("salesKPI").textContent = totals.sales || 0;
+document.getElementById("purchasesKPI").textContent = totals.purchases || 0;
+document.getElementById("revenueKPI").textContent = totals.revenue || 0;
 
-updateSelectOptions(data.allSuppliers);
+updateSelectOptions(data.allSuppliers || []);
 
-drawLineChart(data.timeline);
-drawDonutChart(data.revenueBySupplier);
-drawClusteredColumnChart(data.timeline);
-drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
-drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
+drawLineChart(data.timeline || {});
+drawDonutChart(data.revenueBySupplier || []);
+drawClusteredColumnChart(data.timeline || {});
+drawTable("topSalesTable", data.topSales || [], ["name", "quantity", "sales"]);
+drawTable("topRevenueTable", data.topRevenue || [], ["name", "quantity", "revenue"]);
 }
 
 function updateSelectOptions(suppliers) {
@@ -198,8 +206,9 @@ data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Revenue");
 
-Object.entries(dataObj).forEach(([label, val]) => {
-data.addRow([label, val.sales, val.revenue]);
+const sortedEntries = Object.entries(dataObj).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+sortedEntries.forEach(([label, val]) => {
+data.addRow([label, val.sales || 0, val.revenue || 0]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
@@ -231,8 +240,9 @@ data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Purchases");
 
-Object.entries(dataObj).forEach(([label, val]) => {
-data.addRow([label, val.sales, val.purchases || 0]);
+const sortedEntries = Object.entries(dataObj).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+sortedEntries.forEach(([label, val]) => {
+data.addRow([label, val.sales || 0, val.purchases || 0]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("salesVsPurchasesChart"));
@@ -281,3 +291,4 @@ fetchData(); // Initial load
 </script>
 </body>
 </html>
+
