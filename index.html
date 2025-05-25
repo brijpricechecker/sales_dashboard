@@ -71,7 +71,7 @@
     <strong>Total Revenue:</strong> <span id="totalRevenue">₱0.00</span>
   </div>
 
-  <!-- Charts and tables here -->
+  <!-- Placeholder containers for charts and tables -->
   <div id="timelineChart"></div>
   <div id="monthlyChart"></div>
   <div id="revenueBySupplierChart"></div>
@@ -80,7 +80,7 @@
   <div id="supplierSummary"></div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace with your actual deployment URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Update with your deployment URL
 
     function toggleDropdown() {
       const dropdown = document.getElementById('supplierDropdown');
@@ -136,57 +136,52 @@
           if (data.error) return alert('Error: ' + data.error);
 
           updateKPIs(data.totals);
+          drawTimeline(data.timeline);
+          drawSalesPurchases(data.monthly);
+          drawRevenueBySupplier(data.revenueBySupplier);
+          populateTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
+          populateTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
+          populateTable('supplierSummary', data.supplierSummary, ['supplier', 'sales', 'purchases']);
           populateSupplierFilter(data.allSuppliers, selectedSuppliers);
-  const dropdown = document.getElementById('supplierDropdown');
-  dropdown.innerHTML = '';
-  suppliers.forEach(supplier => {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = supplier;
-    checkbox.checked = selected.includes(supplier);
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(" " + supplier));
-    dropdown.appendChild(label);
-  });
-}
-
-function getSelectedSuppliers() {
-  const checkboxes = document.querySelectorAll('#supplierDropdown input[type="checkbox"]');
-  return Array.from(checkboxes)
-    .filter(cb => cb.checked)
-    .map(cb => cb.value);
-}
-
-function selectAllSuppliers() {
-  document.querySelectorAll('#supplierDropdown input[type="checkbox"]').forEach(cb => cb.checked = true);
-}
-
-function loadDashboard() {
-  const startDate = document.getElementById('startDate').value;
-  const endDate = document.getElementById('endDate').value;
-  const selectedSuppliers = getSelectedSuppliers();
-
-  const url = `${scriptURL}?startDate=${startDate}&endDate=${endDate}&supplier=${encodeURIComponent(selectedSuppliers.join(','))}`;
-
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) return alert('Error: ' + data.error);
-
-      updateKPIs(data.totals);
-      drawTimeline(data.timeline);
-      drawSalesPurchases(data.monthly);
-      drawRevenueBySupplier(data.revenueBySupplier);
-      populateTable('topSalesTable', data.topSales, ['name', 'quantity', 'sales']);
-      populateTable('topRevenueTable', data.topRevenue, ['name', 'quantity', 'revenue']);
-      populateTable('supplierSummary', data.supplierSummary, ['supplier', 'sales', 'purchases']);
-      populateSupplierFilter(data.allSuppliers, selectedSuppliers);
-    })
+        })
         .catch(err => {
           console.error('Error loading data:', err);
           alert('Failed to load dashboard data.');
         });
+    }
+
+    function populateTable(containerId, data, columns) {
+      const container = document.getElementById(containerId);
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p>No data available.</p>';
+        return;
+      }
+
+      let html = '<table border="1" cellpadding="5" cellspacing="0"><thead><tr>';
+      columns.forEach(col => html += `<th>${col}</th>`);
+      html += '</tr></thead><tbody>';
+
+      data.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => html += `<td>${row[col]}</td>`);
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    // Placeholder functions for charts
+    function drawTimeline(data) {
+      document.getElementById('timelineChart').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    function drawSalesPurchases(data) {
+      document.getElementById('monthlyChart').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    function drawRevenueBySupplier(data) {
+      document.getElementById('revenueBySupplierChart').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
     }
 
     // Auto-load dashboard on page load with default dates
