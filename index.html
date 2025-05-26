@@ -48,6 +48,35 @@
   <script>
     google.charts.load('current', {'packages':['corechart']});
 
+document.addEventListener("DOMContentLoaded", () => {
+const dateView = document.getElementById("dateView");
+const startDate = document.getElementById("startDate");
+const endDate = document.getElementById("endDate");
+const supplierFilter = document.getElementById("supplierFilter");
+const selectAllSuppliers = document.getElementById("selectAllSuppliers");
+
+const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec';
+
+function fetchData() {
+const view = dateView.value;
+const params = new URLSearchParams();
+params.append('view', view);
+
+if (view === "daily") {
+if (startDate.value) params.append("startDate", startDate.value);
+if (endDate.value) params.append("endDate", endDate.value);
+}
+
+const selected = Array.from(supplierFilter.selectedOptions).map(o => o.value);
+if (!selectAllSuppliers.checked && selected.length) {
+params.append("supplier", selected.join(","));
+}
+fetch(`${deployedWebAppUrl}?${params.toString()}`)
+.then(res => res.json())
+.then(drawDashboard);
+}
+
+    
     let allSuppliers = [];
 
     function toggleDropdown(event) {
@@ -85,17 +114,7 @@
       return [...checkboxes].map(cb => cb.value);
     }
 
-    function loadData() {
-      const view = document.getElementById("view").value;
-      const startDate = document.getElementById("startDate").value;
-      const endDate = document.getElementById("endDate").value;
-      const suppliers = getSelectedSuppliers();
 
-      const query = `?view=${view}&startDate=${startDate}&endDate=${endDate}&supplier=${suppliers.join(",")}`;
-      fetch(query)
-        .then(r => r.json())
-        .then(drawDashboard);
-    }
 
     function drawDashboard(data) {
       drawKpis(data.totals);
