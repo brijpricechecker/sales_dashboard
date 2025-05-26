@@ -45,7 +45,6 @@ white-space: nowrap;
 .kpi:hover .tooltip {
 display: block;
 }
-
 .controls {
 display: flex;
 align-items: center;
@@ -53,25 +52,21 @@ gap: 10px;
 margin-bottom: 10px;
 flex-wrap: wrap;
 }
-
 .charts-row {
 display: flex;
 height: 40vh;
 gap: 10px;
 }
-
 .chart {
 flex: 1;
 background: white;
 padding: 10px;
 border-radius: 10px;
 }
-
 .tables-row {
 display: flex;
 height: 40vh;
 }
-
 table {
 width: 100%;
 border-collapse: collapse;
@@ -87,12 +82,10 @@ td, th {
 padding: 6px;
 text-align: left;
 }
-
 #supplierFilter {
 width: 200px;
 height: 100px;
 }
-
 #dateInputs {
 display: none;
 }
@@ -150,7 +143,7 @@ const endDate = document.getElementById("endDate");
 const supplierFilter = document.getElementById("supplierFilter");
 const selectAllSuppliers = document.getElementById("selectAllSuppliers");
 
-const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec';
+const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // replace with actual URL
 
 function fetchData() {
 const view = dateView.value;
@@ -169,14 +162,13 @@ params.append("supplier", selected.join(","));
 
 fetch(`${deployedWebAppUrl}?${params.toString()}`)
 .then(res => res.json())
-.then(drawDashboard)
-.catch(err => console.error("Fetch error:", err));
+.then(drawDashboard);
 }
 
 function drawDashboard(data) {
-document.getElementById("salesKPI").textContent = data.totals.sales.toFixed(2);
-document.getElementById("purchasesKPI").textContent = data.totals.purchases.toFixed(2);
-document.getElementById("revenueKPI").textContent = data.totals.revenue.toFixed(2);
+document.getElementById("salesKPI").textContent = data.totals.sales;
+document.getElementById("purchasesKPI").textContent = data.totals.purchases;
+document.getElementById("revenueKPI").textContent = data.totals.revenue;
 
 updateSelectOptions(data.allSuppliers);
 
@@ -189,7 +181,7 @@ drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
 
 function updateSelectOptions(suppliers) {
 const current = Array.from(supplierFilter.options).map(o => o.value);
-if (current.length === suppliers.length) return;
+if (suppliers.sort().join() === current.sort().join()) return;
 
 supplierFilter.innerHTML = "";
 suppliers.forEach(s => {
@@ -206,8 +198,11 @@ data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Revenue");
 
-Object.entries(timelineData).forEach(([date, val]) => {
-data.addRow([date, val.sales, val.revenue]);
+const sorted = Object.entries(timelineData)
+.sort((a, b) => new Date(a[1].rawDate) - new Date(b[1].rawDate));
+
+sorted.forEach(([label, values]) => {
+data.addRow([label, values.sales, values.revenue]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
@@ -239,8 +234,11 @@ data.addColumn("string", "Date");
 data.addColumn("number", "Sales");
 data.addColumn("number", "Purchases");
 
-Object.entries(timelineData).forEach(([date, val]) => {
-data.addRow([date, val.sales, val.purchases || 0]);
+const sorted = Object.entries(timelineData)
+.sort((a, b) => new Date(a[1].rawDate) - new Date(b[1].rawDate));
+
+sorted.forEach(([label, values]) => {
+data.addRow([label, values.sales, values.purchases || 0]);
 });
 
 const chart = new google.visualization.ColumnChart(document.getElementById("salesVsPurchasesChart"));
@@ -272,9 +270,7 @@ fetchData();
 startDate.addEventListener("change", fetchData);
 endDate.addEventListener("change", fetchData);
 supplierFilter.addEventListener("change", () => {
-if (supplierFilter.selectedOptions.length !== supplierFilter.options.length) {
-selectAllSuppliers.checked = false;
-}
+selectAllSuppliers.checked = supplierFilter.selectedOptions.length === supplierFilter.options.length;
 fetchData();
 });
 
@@ -289,5 +285,4 @@ fetchData(); // Initial load
 </script>
 </body>
 </html>
-
 
