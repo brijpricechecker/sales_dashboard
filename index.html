@@ -111,6 +111,18 @@
 <script>
 const backendUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // <-- Replace
 
+function fetchData() {
+const view = dateView.value;
+const params = new URLSearchParams();
+params.append('view', view);
+
+if (view === "daily") {
+if (startDate.value) params.append("startDate", startDate.value);
+if (endDate.value) params.append("endDate", endDate.value);
+}
+
+}
+
 let revenueChart, barChart;
 
 function getSelectedSuppliers() {
@@ -151,6 +163,7 @@ function loadDashboard() {
     .catch(err => console.error('Error loading dashboard:', err));
 }
 
+  
 function renderDashboard(data) {
   document.getElementById('salesKPI').textContent = data.totals.sales.toFixed(2);
   document.getElementById('purchasesKPI').textContent = data.totals.purchases.toFixed(2);
