@@ -208,8 +208,8 @@
         data.addColumn("number", "Sales");
         data.addColumn("number", "Revenue");
 
-        const sorted = Object.entries(dataObj).sort(([a], [b]) => new Date(a) - new Date(b));
-        sorted.forEach(([date, val]) => {
+        const sortedEntries = Object.entries(dataObj).sort(([a], [b]) => new Date(a) - new Date(b));
+        sortedEntries.forEach(([date, val]) => {
           data.addRow([date, val.sales, val.revenue]);
         });
 
