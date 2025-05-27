@@ -195,24 +195,30 @@
         });
       }
 
-      function drawLineChart(dataObj) {
-        const data = new google.visualization.DataTable();
-        data.addColumn("string", "Date");
-        data.addColumn("number", "Sales");
-        data.addColumn("number", "Revenue");
+function drawLineChart(dataObj) {
+  const data = new google.visualization.DataTable();
+  data.addColumn("string", "Date");
+  data.addColumn("number", "Sales");
+  data.addColumn("number", "Revenue");
 
-        Object.entries(dataObj).forEach(([date, val]) => {
-          data.addRow([date, val.sales, val.revenue]);
-        });
+  // ✅ Sort dates before adding to chart
+  const sortedEntries = Object.entries(dataObj).sort(([a], [b]) => {
+    return new Date(a) - new Date(b);
+  });
 
-        const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
-        chart.draw(data, {
-          title: "Sales vs Revenue Over Time",
-          height: "100%",
-          legend: { position: "top" },
-          hAxis: { slantedText: true },
-        });
-      }
+  sortedEntries.forEach(([date, val]) => {
+    data.addRow([date, val.sales, val.revenue]);
+  });
+
+  const chart = new google.visualization.ColumnChart(document.getElementById("timelineChart"));
+  chart.draw(data, {
+    title: "Sales vs Revenue Over Time",
+    height: "100%",
+    legend: { position: "top" },
+    hAxis: { slantedText: true },
+  });
+}
+
 
       function drawDonutChart(dataArr) {
         const data = google.visualization.arrayToDataTable([
