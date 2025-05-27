@@ -137,8 +137,8 @@
       <table id="topRevenueTable"><thead></thead><tbody></tbody></table>
     </div>
     <div class="chart">
-      <h4>Sales vs Purchases by Supplier</h4>
-      <table id="supplierSummaryTable"><thead></thead><tbody></tbody></table>
+      <h4>Total Sales & Purchases by Supplier</h4>
+      <table id="supplierTotalsTable"><thead></thead><tbody></tbody></table>
     </div>
   </div>
 
@@ -152,7 +152,7 @@
       const supplierFilter = document.getElementById("supplierFilter");
       const selectAllSuppliers = document.getElementById("selectAllSuppliers");
 
-      const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Update this if needed
+      const deployedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxQ6X01gOsnohYlGqQ8dHDZDVmBEuAybaP7oqTr9HQX1HOE0apmaH9CAey9DqR4G10d/exec'; // Replace with your deployed URL
 
       function fetchData() {
         const view = dateView.value;
@@ -172,7 +172,7 @@
         fetch(`${deployedWebAppUrl}?${params.toString()}`)
           .then(res => res.json())
           .then(drawDashboard)
-          .catch(err => console.error("Error fetching data:", err));
+          .catch(err => console.error("Error loading data:", err));
       }
 
       function drawDashboard(data) {
@@ -186,7 +186,7 @@
         drawDonutChart(data.revenueBySupplier);
         drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
         drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-        drawTable("supplierSummaryTable", data.supplierSummary, ["supplier", "sales", "purchases"]);
+        drawTable("supplierTotalsTable", data.revenueBySupplier, ["supplier", "sales", "purchases"]);
       }
 
       function updateSelectOptions(suppliers) {
@@ -208,8 +208,8 @@
         data.addColumn("number", "Sales");
         data.addColumn("number", "Revenue");
 
-        const sortedEntries = Object.entries(dataObj).sort(([a], [b]) => new Date(a) - new Date(b));
-        sortedEntries.forEach(([date, val]) => {
+        const sorted = Object.entries(dataObj).sort(([a], [b]) => new Date(a) - new Date(b));
+        sorted.forEach(([date, val]) => {
           data.addRow([date, val.sales, val.revenue]);
         });
 
@@ -218,27 +218,18 @@
           title: "Sales vs Revenue Over Time",
           height: "100%",
           legend: { position: "top" },
-          hAxis: { slantedText: true }
+          hAxis: { slantedText: true },
         });
       }
 
       function drawDonutChart(dataArr) {
-        const chartContainer = document.getElementById("supplierChart");
-        chartContainer.innerHTML = "";
-
-        if (!Array.isArray(dataArr) || dataArr.length === 0) {
-          chartContainer.innerHTML = "<p>No revenue data available for suppliers.</p>";
-          console.warn("Revenue by supplier is empty or invalid:", dataArr);
-          return;
-        }
-
-        const data = google.visualization.arrayToDataTable([
+        const chartData = google.visualization.arrayToDataTable([
           ["Supplier", "Revenue"],
-          ...dataArr.map(r => [r.supplier || "Unknown", Number(r.revenue || 0)])
+          ...dataArr.map(r => [r.supplier, parseFloat(r.revenue.replace(/,/g, '')) || 0])
         ]);
 
-        const chart = new google.visualization.PieChart(chartContainer);
-        chart.draw(data, {
+        const chart = new google.visualization.PieChart(document.getElementById("supplierChart"));
+        chart.draw(chartData, {
           title: "Revenue by Supplier",
           pieHole: 0.4,
           height: "100%"
@@ -281,3 +272,4 @@
   </script>
 </body>
 </html>
+
