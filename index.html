@@ -141,32 +141,6 @@
       <table id="supplierSummaryTable"><thead></thead><tbody></tbody></table>
     </div>
   </div>
-<div class="kpi-container">
-  <div class="kpi blue">Sales <div id="salesKPI"></div></div>
-  <div class="kpi orange">Purchases <div id="purchasesKPI"></div></div>
-  <div class="kpi">Revenue <div id="revenueKPI"></div></div>
-</div>
-
-<div class="charts-row">
-  <div id="timelineChart" class="chart"></div>
-  <div id="supplierChart" class="chart"></div>
-</div>
-
-<div class="tables-row">
-  <div class="chart">
-    <h4>Top 10 Sales</h4>
-    <table id="topSalesTable"><thead></thead><tbody></tbody></table>
-  </div>
-  <div class="chart">
-    <h4>Top 10 Revenue</h4>
-    <table id="topRevenueTable"><thead></thead><tbody></tbody></table>
-  </div>
-  <div class="chart">
-    <h4>Sales vs Purchases Per Supplier</h4>
-    <table id="supplierSummaryTable"><thead></thead><tbody></tbody></table>
-  </div>
-</div>
-
 
   
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -213,7 +187,8 @@
       drawInteractiveComboChart(data.revenueBySupplier);
       drawTable("topSalesTable", data.topSales, ["name", "quantity", "sales"]);
       drawTable("topRevenueTable", data.topRevenue, ["name", "quantity", "revenue"]);
-      drawTable("supplierSummaryTable", data.supplierSummary, ["supplier", "sales", "purchases"]);
+      drawTable("supplierSummaryTable", data.supplierSummary, ["supplier", "sales", "purchases", "revenue"]);
+
     }
 
     function updateSupplierOptions(suppliers) {
@@ -289,17 +264,39 @@
       });
     }
 
-    function drawTable(id, rows, keys) {
-      const table = document.getElementById(id);
-      const thead = table.querySelector("thead");
-      const tbody = table.querySelector("tbody");
 
-      thead.innerHTML = "<tr>" + keys.map(k => `<th>${k.toUpperCase()}</th>`).join("") + "</tr>";
-      tbody.innerHTML = rows.map(row =>
-        "<tr>" + keys.map(k => `<td>${row[k]}</td>`).join("") + "</tr>"
-      ).join("");
-    }
+function drawTable(id, rows, keys) {
+  const table = document.getElementById(id);
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
 
+  // Build the header row with click sorting on supplier column
+  thead.innerHTML = "<tr>" + keys.map((k, index) => {
+    const isSupplier = k === "supplier";
+    return `<th ${isSupplier ? 'style="cursor:pointer;" onclick="sortTable(\'' + id + '\', ' + index + ')"' : ''}>${k.toUpperCase()}</th>`;
+  }).join("") + "</tr>";
+
+  // Fill in the body
+  tbody.innerHTML = rows.map(row =>
+    "<tr>" + keys.map(k => `<td>${row[k]}</td>`).join("") + "</tr>"
+  ).join("");
+}
+
+    function sortTable(tableId, columnIndex) {
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.rows);
+
+  const sorted = rows.sort((a, b) => {
+    const cellA = a.cells[columnIndex].innerText.toLowerCase();
+    const cellB = b.cells[columnIndex].innerText.toLowerCase();
+    return cellA.localeCompare(cellB);
+  });
+
+  tbody.innerHTML = "";
+  sorted.forEach(row => tbody.appendChild(row));
+}
+   
     dateView.addEventListener("change", () => {
       document.getElementById("dateInputs").style.display = dateView.value === "daily" ? "inline-block" : "none";
       fetchData();
