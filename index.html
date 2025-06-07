@@ -296,7 +296,27 @@ function drawTable(id, rows, keys) {
   tbody.innerHTML = "";
   sorted.forEach(row => tbody.appendChild(row));
 }
-   
+
+window.sortTable = function (tableId, columnIndex) {
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.rows);
+
+  const sorted = rows.sort((a, b) => {
+    const cellA = a.cells[columnIndex].innerText.toLowerCase();
+    const cellB = b.cells[columnIndex].innerText.toLowerCase();
+    return cellA.localeCompare(cellB);
+  });
+
+  tbody.innerHTML = "";
+  sorted.forEach(row => tbody.appendChild(row));
+};
+
+drawTable("supplierSummaryTable", data.supplierSummary.map(row => ({
+  ...row,
+  revenue: row.revenue ?? "0.00" // Fallback for undefined/null
+})), ["supplier", "sales", "purchases", "revenue"]);
+    
     dateView.addEventListener("change", () => {
       document.getElementById("dateInputs").style.display = dateView.value === "daily" ? "inline-block" : "none";
       fetchData();
